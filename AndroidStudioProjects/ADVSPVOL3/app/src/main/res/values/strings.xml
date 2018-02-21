@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">ADVSP</string>
+    <string name="ble_name">Prietaiso vardas</string>
+    <string name="advsp">VGTU EF 2018</string>
+    <string name="btn_scan">IEŠKOTI</string>
+    <string name="mediabutton">PLAY</string>
+    <string name="enabling_bluetooth">Pradedama</string>
+    <string name="connecting">Jungiamasi</string>
+    <string name="connected">Prisijungta</string>
+    <string name="disconnecting">Atsijungiama</string>
+    <string name="not_connected">Neprisijungta</string>
+    <string name="scan_for_devices">Scan for Devices</string>
+    <string name="text_to_send">Text to send</string>
+    <string name="unknown">Nežinomas</string>
+    <string name="no_devices_found">No devices found</string>
+    <string name="list_view">List</string>
+    <string name="get_rssi">Founded RSSI</string>
+    <string name="rssi_begin">Nustatoma RSSI</string>
+    <string name="location_house">Saugoma vieta - namai</string>
+    <string name="location_outside">Saugoma vieta - laukas</string>
+    <string name="silent_hours">Tylos valandos</string>
+    <string name="findDevice">Rasti&#10;ADVSP</string>
+
+</resources>
