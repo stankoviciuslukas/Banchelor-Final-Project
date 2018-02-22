@@ -47,6 +47,10 @@ public class ControlActivity extends AppCompatActivity {
     public static final String EXTRAS_RSSI = "EXTRA_RSSI";
     public static final String ACTION_ENABLE_ADVSP_SOUND =
             "android.lukas.advspvol3.ACTION_ENABLE_ADVSP_SOUND";
+    public static final String ACTION_ENABLE_OUTSIDE =
+            "android.lukas.advspvol3.ACTION_ENABLE_OUTSIDE";
+    public static final String ACTION_ENABLE_INSIDE =
+            "android.lukas.advspvol3.ACTION_ENABLE_INSIDE";
 
     private String mDeviceName;
     private String mDeviceAddress;
@@ -62,6 +66,8 @@ public class ControlActivity extends AppCompatActivity {
     TextView textViewRSSI;
     TextView textViewDeviceAddr;
     Switch sleepTime;
+    Switch placeOutside;
+    Switch placeInside;
     private String m_Text = "";
 
 
@@ -198,8 +204,41 @@ public class ControlActivity extends AppCompatActivity {
         textViewName.setText(mDeviceName); //cia kad rastu sita dalyka
         textViewDeviceAddr.setText(mDeviceAddress);
         textViewRSSI.setText(mDeviceRSSI);
-        final MediaPlayer mp = MediaPlayer.create(this, Settings.System.DEFAULT_RINGTONE_URI);
         sleepTime = (Switch) findViewById(R.id.sleep_time);
+        placeOutside = (Switch) findViewById(R.id.switch_outside);
+        placeInside = (Switch) findViewById(R.id.switch_inside);
+        //Atstumo nustatymo vienas iš įgyvendinimo būdų
+        placeInside.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                if(isChecked) {
+                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_INSIDE);
+                    intent.setAction(ControlActivity.ACTION_ENABLE_INSIDE);
+                    sendBroadcast(intent);
+                }
+                else{
+                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_OUTSIDE);
+                    intent.setAction(ControlActivity.ACTION_ENABLE_OUTSIDE);
+                    sendBroadcast(intent);
+                }
+            }
+        });
+        placeOutside.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                if(isChecked) {
+                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_OUTSIDE);
+                    intent.setAction(ControlActivity.ACTION_ENABLE_OUTSIDE);
+                    sendBroadcast(intent);
+                }
+                else{
+                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_INSIDE);
+                    intent.setAction(ControlActivity.ACTION_ENABLE_INSIDE);
+                    sendBroadcast(intent);
+                }
+            }
+        });
+
         //Miego laiko įgyvendinimas čia bus vėliau
         sleepTime.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() { //Tylos valandos switchas, kuriame galim ivesti
             //nenaudojimo valandas
@@ -247,8 +286,6 @@ public class ControlActivity extends AppCompatActivity {
                     sendBroadcast(intent);
                     btn_state = STATE_BUZZER_OFF;
                 }
-
-
             }
         });
 

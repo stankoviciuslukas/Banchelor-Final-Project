@@ -64,6 +64,8 @@ public class BluetoothLeService extends Service{
     private BluetoothGattCharacteristic characteristic;
     int count_zero = 0; //RSSI signalo pakeitimu skaiciavimas - kiek kartu signalas buvo aukstenis arba zemesnis uz riba
     int count_not_zero = 0;
+    int global_rssi_check = -67; //defaultinis rssi
+    int global_try_count = 1; //default bandymų skaičius
     //Busenu indikacija
     public int rssi_state = STATE_BUZZER_OFF; //public, jog kiekvienas metodas galetu pasiekti kintamaji
     private static final int STATE_BUZZER_ON = 1;
@@ -134,15 +136,15 @@ public class BluetoothLeService extends Service{
                 broadcastUpdate(ACTION_RSSI_VALUE_READ, rssi); //gautos RSSI reiksmes pranesimas kitoms klasems
                 //tikrinimas, jeigu RSSI neatitinka signalo reikšmių, įjungti arba išjungti garsinį signalą. //atitinkamai skaičiuojama tris kartus
                 //siekiant išvengti RSSI signalo stipraus padidėjimo dėl pašalinių objektų.
-                    if (rssi < -67) {
+                    if (rssi < global_rssi_check) {
                         count_not_zero++;
                     }
-                    else if (rssi > -67) {
+                    else if (rssi > global_rssi_check) {
                         String data = "zero";
                         writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
                         count_not_zero = 0;
                     }
-                    if(count_not_zero >= 1){
+                    if(count_not_zero >= global_try_count){
                         playAlert();
                         Log.d(TAG, "SKAMBA_NOW");
                         String data = "not_zero";
@@ -277,12 +279,20 @@ public class BluetoothLeService extends Service{
                         rssi_state = STATE_BUZZER_OFF;
                     }
                 }
+                if(ControlActivity.ACTION_ENABLE_INSIDE.equals(action)){
+                    global_try_count = 4; //kadangi viduj galimi dideli rssi šuoliai
+                }
+                if(ControlActivity.ACTION_ENABLE_OUTSIDE.equals(action)){
+                    global_try_count = 2; //lauke mažiau tikėti rssi šuoliai
+                }
             }
         };
         //Mygtuko būsenos filtras
         private IntentFilter makeGattUpdateIntentFilter() {
             final IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction(ControlActivity.ACTION_ENABLE_ADVSP_SOUND);
+            intentFilter.addAction(ControlActivity.ACTION_ENABLE_INSIDE);
+            intentFilter.addAction(ControlActivity.ACTION_ENABLE_OUTSIDE);
             Log.d(TAG, "makeGatt_intentfilter_iškviestas");
             return intentFilter;
         }

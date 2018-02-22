@@ -46,14 +46,14 @@
         android:visibility="visible" />
 
     <Switch
-        android:id="@+id/switch1"
+        android:id="@+id/switch_inside"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/location_house"
         tools:checked="false" />
 
     <Switch
-        android:id="@+id/switch2"
+        android:id="@+id/switch_outside"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/location_outside" />
