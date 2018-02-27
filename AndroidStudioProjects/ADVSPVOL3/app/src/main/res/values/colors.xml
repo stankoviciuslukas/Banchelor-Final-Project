@@ -2,6 +2,6 @@
 <resources>
     <color name="colorPrimary">#1565C0</color>
     <color name="colorPrimaryDark">#0D47A1</color>
-    <color name="colorAccent">#448aff</color>
+    <color name="colorAccent">#CC527A</color>
     <color name="load_bar">#0097a7</color>
 </resources>

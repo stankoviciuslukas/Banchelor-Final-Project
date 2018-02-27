@@ -18,7 +18,8 @@
     <string name="rssi_begin">Nustatoma RSSI</string>
     <string name="location_house">Saugoma vieta - namai</string>
     <string name="location_outside">Saugoma vieta - laukas</string>
-    <string name="silent_hours">Tylos valandos</string>
+    <string name="silent_hours">Begarsis režimas</string>
     <string name="findDevice">Rasti&#10;ADVSP</string>
+    <string name="rangeSetText">Nuotolio nustatymas: Arti - Toli</string>
 
 </resources>

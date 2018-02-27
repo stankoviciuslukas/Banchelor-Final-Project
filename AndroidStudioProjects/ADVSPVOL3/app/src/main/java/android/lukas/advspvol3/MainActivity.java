@@ -15,17 +15,20 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Typeface;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
 import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -34,7 +37,7 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private static final String TAG = "MyActivity";
     private BluetoothAdapter mBluetoothAdapter; //Pagrindinė Bluetooth klasė
@@ -51,9 +54,12 @@ public class MainActivity extends AppCompatActivity {
     ListAdapter adapterLeScanResult; //Skanavimo rezultatų talpinimas
     TextView mDeviceName;
     TextView mDeviceRSSI;
+    private String m_Text = "";
+    String mac = "00:1E:C0:59:AE:95"; //ADVSP MAC adresas
+    int foundADVSP = 0;
 
     private Handler mHandler; //Pranešimų rašymui
-    private static final long SCAN_PERIOD = 10000; // skanavimo periodas 10 sekundžių
+    private static final long SCAN_PERIOD = 5000; // skanavimo periodas 10 sekundžių
 
     //Kai tik paleidžiama program visų elementų atvaizdavimas
     @Override
@@ -63,7 +69,10 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.loadingPanel).setVisibility(View.INVISIBLE); //paslepiam loadinimo bara
         mDeviceRSSI = (TextView) findViewById(R.id.get_rssi);
         mDeviceName = (TextView)findViewById(R.id.ble_name);
-        mDeviceName.setVisibility(View.INVISIBLE);
+        Typeface typeface = Typeface.createFromAsset(getAssets(), "fonts/nevis.ttf");
+        mDeviceName.setTypeface(typeface);
+        mDeviceName.setText("ADVSP");
+        mDeviceName.setVisibility(View.VISIBLE);
         mDeviceRSSI.setVisibility(View.INVISIBLE);
         //BLE funkcijos patikrinimas ant mobilaus telefono
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
@@ -84,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Toast.makeText(getBaseContext(), "Pradedama skenuoti ADVSP", Toast.LENGTH_SHORT).show(); //apvalus pranesimas
+                btnScan.setVisibility(View.INVISIBLE);// paslepiam mygtuka
                 checkBTPermissions(); // Marshmallow apėjimas, tikrinimas privilegijų
                 scanLeDevice(true); //Skanavimas
                 findViewById(R.id.loadingPanel).setVisibility(View.VISIBLE); //Skenavimo progress bar
@@ -113,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         adapterLeScanResult = new ArrayAdapter<BluetoothDevice>(this, android.R.layout.simple_expandable_list_item_1,
                 listBluetoothDevice);
         listViewLE.setAdapter(adapterLeScanResult);
-        listViewLE.setOnItemClickListener(scanResultOnItemClickListener);
+        // listViewLE.setOnItemClickListener(scanResultOnItemClickListener);
         mHandler = new Handler(); //Pranešimų atvaizdavimui
     }
     //----------------------------------------------------------------------------------------------
@@ -132,18 +142,19 @@ public class MainActivity extends AppCompatActivity {
                     String msg = name + "\n" + device.getAddress() + "\n"
                             + getBTDeviceType(device);
 
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle(device.getName())
-                            .setMessage(msg)
-                            .setPositiveButton("PRISIJUNGTI", new DialogInterface.OnClickListener() {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                            builder.setTitle("Nustatykite ADVSP varda ir spauskite prisijungti");
+                            final EditText input = new EditText(MainActivity.this);
+                            input.setInputType(InputType.TYPE_CLASS_TEXT);
+                            builder.setView(input);
+                            //builder.setMessage(msg)
+                            builder.setPositiveButton("PRISIJUNGTI", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-                                    final Intent intent = new Intent(MainActivity.this,
-                                            ControlActivity.class);
-                                    intent.putExtra(ControlActivity.EXTRAS_DEVICE_NAME,
-                                            device.getName());
-                                    intent.putExtra(ControlActivity.EXTRAS_DEVICE_ADDRESS,
-                                            device.getAddress());
+                                    m_Text = input.getText().toString();
+                                    final Intent intent = new Intent(MainActivity.this, ControlActivity.class);
+                                    intent.putExtra(ControlActivity.EXTRAS_DEVICE_NAME, m_Text);
+                                    intent.putExtra(ControlActivity.EXTRAS_DEVICE_ADDRESS, device.getAddress());
                                     if (mScanning) {
                                         mBluetoothLeScanner.stopScan(scanCallback);
                                         mScanning = false;
@@ -235,6 +246,47 @@ public class MainActivity extends AppCompatActivity {
                             "Skanavimas baigtas",
                             Toast.LENGTH_LONG).show();
 
+                    btnScan.setVisibility(View.VISIBLE); //matomas
+                    if(foundADVSP == 1) {
+                        btnScan.setText("PRISIJUNGTI");
+                        btnScan.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                                builder.setTitle("Nustatykite ADVSP varda ir spauskite prisijungti");
+                                final EditText input = new EditText(MainActivity.this);
+                                input.setInputType(InputType.TYPE_CLASS_TEXT);
+                                builder.setView(input);
+                                //builder.setMessage(msg)
+                                builder.setPositiveButton("PRISIJUNGTI", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        if(m_Text == ""){
+                                            m_Text = "ADVSP";
+                                        }else{
+                                            m_Text = input.getText().toString();
+                                        }
+                                        final Intent intent = new Intent(MainActivity.this, ControlActivity.class);
+                                        intent.putExtra(ControlActivity.EXTRAS_DEVICE_NAME, m_Text);
+                                        intent.putExtra(ControlActivity.EXTRAS_DEVICE_ADDRESS, mac);
+                                        if (mScanning) {
+                                            mBluetoothLeScanner.stopScan(scanCallback);
+                                            mScanning = false;
+                                            btnScan.setEnabled(true);
+                                        }
+                                        startActivity(intent);
+                                    }
+                                })
+                                        .setNeutralButton("IŠEITI", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                            }
+                                        })
+                                        .show();
+
+                            }
+                        });
+                    }
                     mScanning = false; //neskenuojama
                     btnScan.setEnabled(true);
                 }
@@ -271,18 +323,21 @@ public class MainActivity extends AppCompatActivity {
         }
         private void addBluetoothDevice(BluetoothDevice device, int new_rssi){ //Prietaisų pridėjimas į sąrašą
 
-            String mac = "00:1E:C0:59:AE:95"; //ADVSP MAC adresas
             if(!listBluetoothDevice.contains(device)) {
                 //Jeigu prietaiso nėra sąraše, jį pridedam
                 if (mac.equals(device.getAddress())) { //MAC filtras, jog tik ADVSP prietaisas būtų rastas
+                    foundADVSP = 1;
+                    mBluetoothLeScanner.stopScan(scanCallback);
+                    mScanning = false;
+                    findViewById(R.id.loadingPanel).setVisibility(View.INVISIBLE);
                     //Klaidų tikrinimui
                     Log.d(TAG, "Device Name:" + device.getName());
                     Log.d(TAG, "device MAC" + device.getAddress());
                     Log.d(TAG, "Add bluetoothDevice funkcija:" + new_rssi);
                     listBluetoothDevice.add(device); //Prietaiso pridėjimas į sąrašą
-                    mDeviceName.setText("Rastas " + device.getName());
+                    //mDeviceName.setText("Rastas " + device.getName());
                     String found_rssi = Integer.toString(new_rssi);
-                    mDeviceRSSI.setText("Prietaiso signalo lygis: " + found_rssi);
+                    mDeviceRSSI.setText("Prietaiso signalo lygis: " + found_rssi + " dBm");
                     mDeviceName.setVisibility(View.VISIBLE);
                     mDeviceRSSI.setVisibility(View.VISIBLE);
                     listViewLE.invalidateViews(); //Sąrašo atnaujinimas

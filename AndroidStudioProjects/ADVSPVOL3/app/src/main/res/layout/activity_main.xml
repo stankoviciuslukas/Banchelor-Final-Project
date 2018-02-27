@@ -7,12 +7,26 @@
     tools:context="android.lukas.advspvol3.MainActivity">
 
     <TextView
+        android:id="@+id/ble_name"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="500dp"
+        android:gravity="center"
+        android:text="@string/ble_name"
+        android:textColor="#FFFFFF"
+        android:textSize="40sp"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
+
+    <TextView
         android:id="@+id/advsp"
         android:layout_width="wrap_content"
         android:layout_height="0dp"
         android:layout_marginBottom="16dp"
         android:text="@string/advsp"
-        android:textColor="#000000"
+        android:textColor="#FFFFFF"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent" />
@@ -24,50 +38,41 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="17dp"
         android:layout_marginTop="428dp"
-        android:background="@color/colorPrimary"
+        android:background="@drawable/button_pink"
         android:text="@string/btn_scan"
         android:textColor="#ffffff"
         app:layout_constraintBottom_toTopOf="@+id/advsp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.096" />
 
-    <TextView
-        android:id="@+id/ble_name"
-        android:layout_width="300dp"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="468dp"
-        android:gravity="center"
-        android:text="@string/ble_name"
-        android:textColor="#212121"
-        android:textSize="20sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent" />
 
     <ListView
         android:id="@+id/lelist"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
+        android:layout_marginLeft="72dp"
         android:layout_height="50dp"
         android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:layout_marginBottom="115dp"
+        android:foregroundGravity="center"
         android:layout_marginTop="80dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.096" />
 
     <TextView
         android:id="@+id/get_rssi"
         android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="144dp"
+        android:layout_marginTop="180dp"
         android:gravity="center"
         android:text="@string/get_rssi"
-        android:textColor="#212121"
+        android:textColor="#FFFFFF"
         android:textSize="20sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
@@ -82,14 +87,15 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0">
 
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:indeterminate="true"
-            android:indeterminateTint="@color/load_bar"
+            android:indeterminateTint="#A8A7A7"
             android:indeterminateTintMode="src_atop" />
 
     </RelativeLayout>

@@ -1,5 +1,6 @@
 package android.lukas.advspvol3;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -28,6 +29,7 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ExpandableListView;
+import android.widget.SeekBar;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -38,19 +40,22 @@ import java.util.HashMap;
 import java.util.List;
 
 
-public class ControlActivity extends AppCompatActivity {
+public class ControlActivity extends Activity {
 
     private final static String TAG = ControlActivity.class.getSimpleName();
     public static final String EXTRAS_DEVICE_RSSI = "DEVICE_RSSI";
     public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
     public static final String EXTRAS_RSSI = "EXTRA_RSSI";
+    public static final String EXTRA_RANGE_STATE = "EXTRA_RANGE_STATE";
     public static final String ACTION_ENABLE_ADVSP_SOUND =
             "android.lukas.advspvol3.ACTION_ENABLE_ADVSP_SOUND";
-    public static final String ACTION_ENABLE_OUTSIDE =
-            "android.lukas.advspvol3.ACTION_ENABLE_OUTSIDE";
-    public static final String ACTION_ENABLE_INSIDE =
-            "android.lukas.advspvol3.ACTION_ENABLE_INSIDE";
+    public static final String ACTION_ENABLE_SILENT =
+            "android.lukas.advspvol3.ACTION_ENABLE_SILENT";
+    public static final String ACTION_DISABLE_SILENT =
+            "android.lukas.advspvol3.ACTION_DISABLE_SILENT";
+    public static final String ACTION_RANGE_SET_CHANGE =
+            "android.lukas.advspvol3.ACTION_RANGE_SET_CHANGE";
 
     private String mDeviceName;
     private String mDeviceAddress;
@@ -65,14 +70,12 @@ public class ControlActivity extends AppCompatActivity {
     TextView textViewName; //reikia, kad jie butu public, kitaip funkcijos ju neras
     TextView textViewRSSI;
     TextView textViewDeviceAddr;
-    Switch sleepTime;
-    Switch placeOutside;
-    Switch placeInside;
+    TextView textViewRangeSet;
+    Switch silentTime;
+    SeekBar rangeSet;
     private String m_Text = "";
-
-
-    private ExpandableListView mGattServicesList;
     int tryCount = 0; //Bandymų skaičiaus indikacija
+    int setRangeValue;
 
 
     private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
@@ -167,25 +170,25 @@ public class ControlActivity extends AppCompatActivity {
         Log.d(TAG, "Atsumas paskaiciuots: " + distance + " m");
         if(rssi_int > -30) {
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Nuostabus");
+            textViewRSSI.setText("Signalo stiprumas: Nuostabus");
         } else if (-30 >rssi_int && rssi_int > -67){
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Labai geras");
+            textViewRSSI.setText("Signalo stiprumas: Labai geras");
         } else if (-67 >rssi_int && rssi_int > -70){
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Geras");
+            textViewRSSI.setText("Signalo stiprumas: Geras");
         } else if (-70 >rssi_int && rssi_int > -80){
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Nelabai");
+            textViewRSSI.setText("Signalo stiprumas: Nelabai");
         } else if (-80 >rssi_int){
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Prie mirties");
+            textViewRSSI.setText("Signalo stiprumas: Prie mirties");
         }
     }
 
-    private void clearUI() {
-        mGattServicesList.setAdapter((SimpleExpandableListAdapter) null);
-    }
+    //private void clearUI() {
+    //    mGattServicesList.setAdapter((SimpleExpandableListAdapter) null);
+    //}
     //Pagrindinis metodas sukuriamas, kai paleidžiama ControlActivity
     //Sukuriami reikalingi elementai informacijos atvaizdavimui.
     @Override
@@ -201,72 +204,63 @@ public class ControlActivity extends AppCompatActivity {
         textViewRSSI = (TextView)findViewById(R.id.device_rssi);
         textViewState = (TextView)findViewById(R.id.textState);
         textViewName = (TextView)findViewById(R.id.textDeviceName);
-        textViewName.setText(mDeviceName); //cia kad rastu sita dalyka
-        textViewDeviceAddr.setText(mDeviceAddress);
+        textViewRangeSet = (TextView)findViewById(R.id.rangeSetView);
+        textViewRangeSet.setText("Nuotolio nustatymas: Arti - Toli");
+        textViewName.setText("Vardas: " + mDeviceName); //cia kad rastu sita dalyka
+        textViewDeviceAddr.setText("MAC: " + mDeviceAddress);
         textViewRSSI.setText(mDeviceRSSI);
-        sleepTime = (Switch) findViewById(R.id.sleep_time);
-        placeOutside = (Switch) findViewById(R.id.switch_outside);
-        placeInside = (Switch) findViewById(R.id.switch_inside);
+        silentTime = (Switch) findViewById(R.id.silent_time);
+        rangeSet = (SeekBar) findViewById(R.id.rangeSet);
         //Atstumo nustatymo vienas iš įgyvendinimo būdų
-        placeInside.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        silentTime.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
                 if(isChecked) {
-                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_INSIDE);
-                    intent.setAction(ControlActivity.ACTION_ENABLE_INSIDE);
+                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_SILENT);
+                    intent.setAction(ControlActivity.ACTION_ENABLE_SILENT);
                     sendBroadcast(intent);
                 }
                 else{
-                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_OUTSIDE);
-                    intent.setAction(ControlActivity.ACTION_ENABLE_OUTSIDE);
+                    final Intent intent = new Intent(ControlActivity.ACTION_DISABLE_SILENT);
+                    intent.setAction(ControlActivity.ACTION_DISABLE_SILENT);
                     sendBroadcast(intent);
                 }
             }
         });
-        placeOutside.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        rangeSet.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                if(isChecked) {
-                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_OUTSIDE);
-                    intent.setAction(ControlActivity.ACTION_ENABLE_OUTSIDE);
-                    sendBroadcast(intent);
+            public void onProgressChanged(SeekBar seekBar, int i, boolean isChanged) {
+                if(isChanged){
+                    setRangeValue = seekBar.getProgress();
+                    if(setRangeValue < 50){
+                        tryCount = 2;
+                    }
+                    else{
+                        tryCount = 0;
+                    }
                 }
-                else{
-                    final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_INSIDE);
-                    intent.setAction(ControlActivity.ACTION_ENABLE_INSIDE);
-                    sendBroadcast(intent);
-                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                Toast.makeText(ControlActivity.this,
+                        "Pakitimai išsaugoti",
+                        Toast.LENGTH_LONG).show();
+                final Intent intent = new Intent(ControlActivity.ACTION_RANGE_SET_CHANGE);
+                intent.setAction(ControlActivity.ACTION_RANGE_SET_CHANGE);
+                String tryCountString = Integer.toString(tryCount);
+                intent.putExtra(BluetoothLeService.ACTION_RANGE_SET, tryCountString);
+                sendBroadcast(intent);
             }
         });
 
-        //Miego laiko įgyvendinimas čia bus vėliau
-        sleepTime.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() { //Tylos valandos switchas, kuriame galim ivesti
-            //nenaudojimo valandas
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                if(isChecked){
-                    AlertDialog.Builder builder = new AlertDialog.Builder(ControlActivity.this);
-                    builder.setTitle("Įveskite duomenys");
-                    final EditText input = new EditText(ControlActivity.this);
-                    input.setInputType(InputType.TYPE_CLASS_DATETIME);
-                    builder.setView(input);
-                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            m_Text = input.getText().toString();
-                            Log.d(TAG, "m_Text: " + m_Text);
-                        }
-                    });
-                    builder.setNegativeButton("Atšaukti", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            dialogInterface.cancel();
-                        }
-                    });
-                    builder.show();
-                }
-            }
-        });
+
+
         //Rankinis prietaiso garsinio signalo įjungimas
         //Pagal atitinkams prietaiso buzzerio būseną, signalas išjungiamas arba įjungiamas.
         mFindDevice.setOnClickListener(new View.OnClickListener() {

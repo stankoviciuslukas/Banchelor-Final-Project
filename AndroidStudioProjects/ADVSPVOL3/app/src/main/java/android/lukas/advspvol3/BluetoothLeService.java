@@ -50,6 +50,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 
+import static android.lukas.advspvol3.ControlActivity.EXTRAS_DEVICE_NAME;
+import static android.lukas.advspvol3.ControlActivity.EXTRA_RANGE_STATE;
+
 /**
  * Service for managing connection and data communication with a GATT server hosted on a
  * given Bluetooth LE device.
@@ -68,11 +71,13 @@ public class BluetoothLeService extends Service{
     int global_try_count = 1; //default bandymų skaičius
     //Busenu indikacija
     public int rssi_state = STATE_BUZZER_OFF; //public, jog kiekvienas metodas galetu pasiekti kintamaji
+    public int silent_check = 0;
     private static final int STATE_BUZZER_ON = 1;
     private static final int STATE_BUZZER_OFF = 0;
     private static final int STATE_DISCONNECTED = 0;
     private static final int STATE_CONNECTING = 1;
     private static final int STATE_CONNECTED = 2;
+    private static final int SILENT_ENABLED = 0;
 
     public final static String ACTION_GATT_CONNECTED =
             "android.lukas.advspvol3.ACTION_GATT_CONNECTED";
@@ -86,6 +91,9 @@ public class BluetoothLeService extends Service{
             "android.lukas.advspvol3.EXTRA_DATA";
     public final static String ACTION_RSSI_VALUE_READ =
             "android.lukas.advspvol3.ACTION_RSSI_VALUE_READ";
+    public final static String ACTION_RANGE_SET =
+            "android.lukas.advspvol3.ACTION_RANGE_SET";
+
 
     private final static UUID OWN_PRIVATE_SERVICE = UUID.fromString("5e3c75a8-818a-4be8-90af-2f3e56acd402"); //Privatus servisas skirtas komunikacijai su BLE prietaisu
     private final static UUID OWN_PRIVATE_CHAR = UUID.fromString("e586bd8a-4dc1-4856-b53d-b7611d538061"); //Privati charakteristika su write ir notify parametrais
@@ -109,18 +117,18 @@ public class BluetoothLeService extends Service{
                         mBluetoothGatt.discoverServices()); //mumis numeta i onServicesDiscovered callbacka'
 
                 //Atitinkama laikotarpi (siuo atveju 2 sekundes) skaitomas RSSI signalas
-                TimerTask task = new TimerTask()
-                {
-                    @Override
-                    public void run()
-                    {
-                        if(rssi_state == STATE_BUZZER_OFF) { //tikrinama, jeigu garsinis signalas isjungtas - nuskaityti RSSI signala
-                            mBluetoothGatt.readRemoteRssi(); //numeta i onReadRemoteRSSI callbacka
+                if(silent_check == 0) {
+                    TimerTask task = new TimerTask() {
+                        @Override
+                        public void run() {
+                            if (rssi_state == STATE_BUZZER_OFF) { //tikrinama, jeigu garsinis signalas isjungtas - nuskaityti RSSI signala
+                                mBluetoothGatt.readRemoteRssi(); //numeta i onReadRemoteRSSI callbacka
+                            }
                         }
-                    }
-                };
-                Timer rssiTimer = new Timer();
-                rssiTimer.schedule(task, 5000, 5000); //apie 2 sekundes
+                    };
+                    Timer rssiTimer = new Timer();
+                    rssiTimer.schedule(task, 5000, 5000); //apie 2 sekundes
+                }
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) { //Jeigu prietaisas atsijungia nuo mobilaus irenginio - apie tai pranesti
                 intentAction = ACTION_GATT_DISCONNECTED;
@@ -279,11 +287,18 @@ public class BluetoothLeService extends Service{
                         rssi_state = STATE_BUZZER_OFF;
                     }
                 }
-                if(ControlActivity.ACTION_ENABLE_INSIDE.equals(action)){
-                    global_try_count = 4; //kadangi viduj galimi dideli rssi šuoliai
+                if(ControlActivity.ACTION_ENABLE_SILENT.equals(action)){
+                    silent_check = 1; //miego režimas įjungtas
+                    Log.d(TAG, "SILENT_ENABLED");
                 }
-                if(ControlActivity.ACTION_ENABLE_OUTSIDE.equals(action)){
-                    global_try_count = 2; //lauke mažiau tikėti rssi šuoliai
+                if(ControlActivity.ACTION_DISABLE_SILENT.equals(action)){
+                    silent_check = 0; //miego režimas išjungtas
+                    Log.d(TAG, "SILENT_DISABLED");
+                }
+                if(ControlActivity.ACTION_RANGE_SET_CHANGE.equals(action)){
+                    String intentValueHolder = intent.getStringExtra(ACTION_RANGE_SET);
+                    global_try_count = Integer.parseInt(intentValueHolder);
+                    Log.d(TAG, "RANGE_SET_CHANGE" + intentValueHolder);
                 }
             }
         };
@@ -291,8 +306,9 @@ public class BluetoothLeService extends Service{
         private IntentFilter makeGattUpdateIntentFilter() {
             final IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction(ControlActivity.ACTION_ENABLE_ADVSP_SOUND);
-            intentFilter.addAction(ControlActivity.ACTION_ENABLE_INSIDE);
-            intentFilter.addAction(ControlActivity.ACTION_ENABLE_OUTSIDE);
+            intentFilter.addAction(ControlActivity.ACTION_ENABLE_SILENT);
+            intentFilter.addAction(ControlActivity.ACTION_DISABLE_SILENT);
+            intentFilter.addAction(ControlActivity.ACTION_RANGE_SET_CHANGE);
             Log.d(TAG, "makeGatt_intentfilter_iškviestas");
             return intentFilter;
         }
