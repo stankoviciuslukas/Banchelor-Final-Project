@@ -73,8 +73,8 @@ public class ControlActivity extends Activity {
     TextView textViewRangeSet;
     Switch silentTime;
     SeekBar rangeSet;
-    private String m_Text = "";
     int tryCount = 0; //Bandymų skaičiaus indikacija
+    int tryRSSICount = 0;
     int setRangeValue;
 
 
@@ -134,6 +134,11 @@ public class ControlActivity extends Activity {
                 //playAlert(mDeviceRSSI);
                 Log.d(TAG, "mDeviceRSSI = " + mDeviceRSSI);
             }
+            else if (BluetoothLeService.ACTION_PHONE_ALERT.equals(action)){
+                Toast.makeText(ControlActivity.this, "ADVSP dingo", Toast.LENGTH_LONG).show();
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                v.vibrate(5000);
+            }
         }
     };
 
@@ -146,10 +151,11 @@ public class ControlActivity extends Activity {
                 .setPositiveButton("Išeiti", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+                        finish();
                         //čia dar reikės pagalvoti, kad programa nelūžtų
-                        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK|Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
+                        //Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                        //intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK|Intent.FLAG_ACTIVITY_NEW_TASK);
+                        //startActivity(intent);
                     }
                 })
                 .setNeutralButton("Grįžti", new DialogInterface.OnClickListener() {
@@ -232,11 +238,12 @@ public class ControlActivity extends Activity {
             public void onProgressChanged(SeekBar seekBar, int i, boolean isChanged) {
                 if(isChanged){
                     setRangeValue = seekBar.getProgress();
-                    if(setRangeValue < 50){
-                        tryCount = 2;
+                    if(setRangeValue > 50){
+                        tryRSSICount = 1; //Jeigu prietaisas yra toli - RSSI šuoliai bus mažesni
+                        //darom prielaidą, jog mažiau kliūčių kažkokių gali atsirasti
                     }
                     else{
-                        tryCount = 0;
+                        tryRSSICount = 3; //Jeigu prietaisas yra arti - RSSI šuolių tikimybė yra didesnė dėl kliūčių kiekio
                     }
                 }
             }
@@ -248,12 +255,10 @@ public class ControlActivity extends Activity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                Toast.makeText(ControlActivity.this,
-                        "Pakitimai išsaugoti",
-                        Toast.LENGTH_LONG).show();
+                Toast.makeText(ControlActivity.this, "Pakitimai išsaugoti", Toast.LENGTH_LONG).show();
                 final Intent intent = new Intent(ControlActivity.ACTION_RANGE_SET_CHANGE);
                 intent.setAction(ControlActivity.ACTION_RANGE_SET_CHANGE);
-                String tryCountString = Integer.toString(tryCount);
+                String tryCountString = Integer.toString(tryRSSICount);
                 intent.putExtra(BluetoothLeService.ACTION_RANGE_SET, tryCountString);
                 sendBroadcast(intent);
             }
@@ -301,7 +306,7 @@ public class ControlActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        //unregisterReceiver(mGattUpdateReceiver);
+        unregisterReceiver(mGattUpdateReceiver);
     }
 
 
@@ -319,6 +324,7 @@ public class ControlActivity extends Activity {
         intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
         intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
         intentFilter.addAction(BluetoothLeService.ACTION_RSSI_VALUE_READ);
+        intentFilter.addAction(BluetoothLeService.ACTION_PHONE_ALERT);
         return intentFilter;
     }
 

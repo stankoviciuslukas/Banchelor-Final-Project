@@ -41,6 +41,7 @@ import android.os.ParcelUuid;
 import android.os.Vibrator;
 import android.provider.Settings;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -67,11 +68,12 @@ public class BluetoothLeService extends Service{
     private BluetoothGattCharacteristic characteristic;
     int count_zero = 0; //RSSI signalo pakeitimu skaiciavimas - kiek kartu signalas buvo aukstenis arba zemesnis uz riba
     int count_not_zero = 0;
-    int global_rssi_check = -67; //defaultinis rssi
-    int global_try_count = 1; //default bandymų skaičius
+    int globalRSSICheck = -67; //defaultinis rssi
+    int globalTryCount = 1; //default bandymų skaičius
+    int changeRSSICounter = 0;
     //Busenu indikacija
-    public int rssi_state = STATE_BUZZER_OFF; //public, jog kiekvienas metodas galetu pasiekti kintamaji
-    public int silent_check = 0;
+    public int stateRSSI = STATE_BUZZER_OFF; //public, jog kiekvienas metodas galetu pasiekti kintamaji
+    public int silentCheck = 0;
     private static final int STATE_BUZZER_ON = 1;
     private static final int STATE_BUZZER_OFF = 0;
     private static final int STATE_DISCONNECTED = 0;
@@ -93,6 +95,8 @@ public class BluetoothLeService extends Service{
             "android.lukas.advspvol3.ACTION_RSSI_VALUE_READ";
     public final static String ACTION_RANGE_SET =
             "android.lukas.advspvol3.ACTION_RANGE_SET";
+    public final static String ACTION_PHONE_ALERT =
+            "android.lukas.advspvol3.ACTION_PHONE_ALERT";
 
 
     private final static UUID OWN_PRIVATE_SERVICE = UUID.fromString("5e3c75a8-818a-4be8-90af-2f3e56acd402"); //Privatus servisas skirtas komunikacijai su BLE prietaisu
@@ -117,18 +121,19 @@ public class BluetoothLeService extends Service{
                         mBluetoothGatt.discoverServices()); //mumis numeta i onServicesDiscovered callbacka'
 
                 //Atitinkama laikotarpi (siuo atveju 2 sekundes) skaitomas RSSI signalas
-                if(silent_check == 0) {
+
                     TimerTask task = new TimerTask() {
                         @Override
                         public void run() {
-                            if (rssi_state == STATE_BUZZER_OFF) { //tikrinama, jeigu garsinis signalas isjungtas - nuskaityti RSSI signala
+                            if (stateRSSI == STATE_BUZZER_OFF && silentCheck == 0) { //tikrinama, jeigu garsinis signalas isjungtas - nuskaityti RSSI signala
                                 mBluetoothGatt.readRemoteRssi(); //numeta i onReadRemoteRSSI callbacka
+                                Log.d(TAG,"readRemoteRssicalled");
                             }
                         }
                     };
                     Timer rssiTimer = new Timer();
-                    rssiTimer.schedule(task, 5000, 5000); //apie 2 sekundes
-                }
+                    rssiTimer.schedule(task, 2000, 2000); //apie 2 sekundes
+
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) { //Jeigu prietaisas atsijungia nuo mobilaus irenginio - apie tai pranesti
                 intentAction = ACTION_GATT_DISCONNECTED;
@@ -144,37 +149,47 @@ public class BluetoothLeService extends Service{
                 broadcastUpdate(ACTION_RSSI_VALUE_READ, rssi); //gautos RSSI reiksmes pranesimas kitoms klasems
                 //tikrinimas, jeigu RSSI neatitinka signalo reikšmių, įjungti arba išjungti garsinį signalą. //atitinkamai skaičiuojama tris kartus
                 //siekiant išvengti RSSI signalo stipraus padidėjimo dėl pašalinių objektų.
-                    if (rssi < global_rssi_check) {
-                        count_not_zero++;
+
+
+                //TO-DO Fix Mute Setting and rename variables to be more understanding and shit brah
+
+
+
+
+                    if (rssi < globalRSSICheck) {
+                        changeRSSICounter++;
+                        Log.d(TAG, "count_not_zero " + changeRSSICounter);
+                        if(changeRSSICounter > globalTryCount){
+                            Log.d(TAG, "IF_veikia");
+                            String data = "enable_sound";
+                            writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
+                            playAlert();
+                            changeRSSICounter = 0;
+
+                        }
+                        /*
+                        if(count_not_zero >= 3){
+                            playAlert();
+                            Log.d(TAG, "SKAMBA_NOW");
+                            String data = "not_zero";
+                            writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
+                            count_not_zero = 0;
+                            count_zero = 0;
+                        }
+                        */
                     }
-                    else if (rssi > global_rssi_check) {
-                        String data = "zero";
+                    else if (rssi > globalRSSICheck) {
+                        String data = "disable_sound";
                         writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
-                        count_not_zero = 0;
-                    }
-                    if(count_not_zero >= global_try_count){
-                        playAlert();
-                        Log.d(TAG, "SKAMBA_NOW");
-                        String data = "not_zero";
-                        writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
-                        count_not_zero = 0;
-                        count_zero = 0;
+                        //count_not_zero = 0;
                     }
             }
         }
         private void playAlert() {
-
-            final android.support.v7.app.AlertDialog.Builder build = new android.support.v7.app.AlertDialog.Builder(BluetoothLeService.this);
-            build.setTitle("ADSVP dingo");
-            build.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    dialogInterface.cancel();
-                }
-            });
-            build.show();
-            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-            v.vibrate(10000);
+            final Intent intent = new Intent(BluetoothLeService.ACTION_PHONE_ALERT);
+            intent.setAction(BluetoothLeService.ACTION_PHONE_ALERT);
+            Log.d(TAG, "ACTION_PHONE_ALERT - ON");
+            sendBroadcast(intent);
         }
         //Šis metodas labiau laikomas kaip patikra ar mūsų prietaisas aptinka privatų servisą bei charakteristikas
         @Override
@@ -241,10 +256,10 @@ public class BluetoothLeService extends Service{
             }
             //Pagal RSSI yra įjungiamas arba išjungiamas garsinis signalizatorius
             //Charakteristikai yra priskiriama reikšme (baitų)
-            if(data.equals("not_zero")) {
+            if(data.equals("enable_sound")) {
                 characteristic.setValue(new byte[]{02}); //signalas įjungiamas
             }
-            else if(data.equals("zero")){
+            else if(data.equals("disable_sound")){
                 characteristic.setValue(new byte[]{00}); //signalas išjungiamas
             }
             try {
@@ -270,38 +285,40 @@ public class BluetoothLeService extends Service{
         }
         //Šis metodas atsakingas už mygtuko būsenos filtravimą (kada nuspaustas, kada ne) iš Control Activity klasės
         //Mygtuko paspaudimo įjungiamas arba išjungiama prietaiso garsas.
+
         private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 final String action = intent.getAction();
                 if(ControlActivity.ACTION_ENABLE_ADVSP_SOUND.equals(action)){
-                    if(rssi_state == STATE_BUZZER_OFF) {
+                    if(stateRSSI == STATE_BUZZER_OFF) {
                         Log.d(TAG, "ACTION_ENABLE");
-                        String data = "not_zero";
+                        String data = "enable_sound";
                         writeCharacteristic(characteristic, data);
-                        rssi_state = STATE_BUZZER_ON;
+                        stateRSSI = STATE_BUZZER_ON;
                     }
-                    else if(rssi_state == STATE_BUZZER_ON){
-                        String data = "zero";
+                    else if(stateRSSI == STATE_BUZZER_ON){
+                        String data = "disable_sound";
                         writeCharacteristic(characteristic, data);
-                        rssi_state = STATE_BUZZER_OFF;
+                        stateRSSI = STATE_BUZZER_OFF;
                     }
                 }
                 if(ControlActivity.ACTION_ENABLE_SILENT.equals(action)){
-                    silent_check = 1; //miego režimas įjungtas
+                    silentCheck = 1; //miego režimas įjungtas
                     Log.d(TAG, "SILENT_ENABLED");
                 }
                 if(ControlActivity.ACTION_DISABLE_SILENT.equals(action)){
-                    silent_check = 0; //miego režimas išjungtas
+                    silentCheck = 0; //miego režimas išjungtas
                     Log.d(TAG, "SILENT_DISABLED");
                 }
                 if(ControlActivity.ACTION_RANGE_SET_CHANGE.equals(action)){
                     String intentValueHolder = intent.getStringExtra(ACTION_RANGE_SET);
-                    global_try_count = Integer.parseInt(intentValueHolder);
-                    Log.d(TAG, "RANGE_SET_CHANGE" + intentValueHolder);
+                    globalTryCount = Integer.parseInt(intentValueHolder);
+                    Log.d(TAG, "RANGE_SET_CHANGE " + intentValueHolder);
                 }
             }
         };
+
         //Mygtuko būsenos filtras
         private IntentFilter makeGattUpdateIntentFilter() {
             final IntentFilter intentFilter = new IntentFilter();
@@ -328,6 +345,7 @@ public class BluetoothLeService extends Service{
         final Intent intent = new Intent(action);
         sendBroadcast(intent);
     }
+
 /*
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {

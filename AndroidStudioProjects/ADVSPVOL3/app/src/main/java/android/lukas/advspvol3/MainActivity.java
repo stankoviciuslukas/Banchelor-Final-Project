@@ -54,7 +54,7 @@ public class MainActivity extends Activity {
     ListAdapter adapterLeScanResult; //Skanavimo rezultatų talpinimas
     TextView mDeviceName;
     TextView mDeviceRSSI;
-    private String m_Text = "";
+    private String deviceUserSetName = "";
     String mac = "00:1E:C0:59:AE:95"; //ADVSP MAC adresas
     int foundADVSP = 0;
 
@@ -126,52 +126,6 @@ public class MainActivity extends Activity {
         // listViewLE.setOnItemClickListener(scanResultOnItemClickListener);
         mHandler = new Handler(); //Pranešimų atvaizdavimui
     }
-    //----------------------------------------------------------------------------------------------
-    //Skanavimo rezultatų paspaudimo lentelė
-    AdapterView.OnItemClickListener scanResultOnItemClickListener =
-            new AdapterView.OnItemClickListener() {
-
-                @Override //kas bus kai paspausim ant galimo device'o
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
-                    final BluetoothDevice device = (BluetoothDevice) parent.getItemAtPosition(position);
-                    String name = device.getName();
-
-                    if(name == null){ name = "Nežinomas prietaisas"; }
-
-                    String msg = name + "\n" + device.getAddress() + "\n"
-                            + getBTDeviceType(device);
-
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                            builder.setTitle("Nustatykite ADVSP varda ir spauskite prisijungti");
-                            final EditText input = new EditText(MainActivity.this);
-                            input.setInputType(InputType.TYPE_CLASS_TEXT);
-                            builder.setView(input);
-                            //builder.setMessage(msg)
-                            builder.setPositiveButton("PRISIJUNGTI", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    m_Text = input.getText().toString();
-                                    final Intent intent = new Intent(MainActivity.this, ControlActivity.class);
-                                    intent.putExtra(ControlActivity.EXTRAS_DEVICE_NAME, m_Text);
-                                    intent.putExtra(ControlActivity.EXTRAS_DEVICE_ADDRESS, device.getAddress());
-                                    if (mScanning) {
-                                        mBluetoothLeScanner.stopScan(scanCallback);
-                                        mScanning = false;
-                                        btnScan.setEnabled(true);
-                                    }
-                                    startActivity(intent);
-                                }
-                            })
-                            .setNeutralButton("IŠEITI", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                }
-                            })
-                            .show();
-
-                }
-            };
     //-------------------------------------------------------------------------------------------------
     //Nustatomas prietaiso tipas
     private String getBTDeviceType(BluetoothDevice d){
@@ -261,13 +215,13 @@ public class MainActivity extends Activity {
                                 builder.setPositiveButton("PRISIJUNGTI", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-                                        if(m_Text == ""){
-                                            m_Text = "ADVSP";
+                                        if(deviceUserSetName == ""){
+                                            deviceUserSetName = "ADVSP";
                                         }else{
-                                            m_Text = input.getText().toString();
+                                            deviceUserSetName = input.getText().toString();
                                         }
                                         final Intent intent = new Intent(MainActivity.this, ControlActivity.class);
-                                        intent.putExtra(ControlActivity.EXTRAS_DEVICE_NAME, m_Text);
+                                        intent.putExtra(ControlActivity.EXTRAS_DEVICE_NAME, deviceUserSetName);
                                         intent.putExtra(ControlActivity.EXTRAS_DEVICE_ADDRESS, mac);
                                         if (mScanning) {
                                             mBluetoothLeScanner.stopScan(scanCallback);
