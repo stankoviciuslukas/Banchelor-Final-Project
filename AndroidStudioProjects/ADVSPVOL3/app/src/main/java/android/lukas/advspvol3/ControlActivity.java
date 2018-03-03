@@ -48,6 +48,7 @@ public class ControlActivity extends Activity {
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
     public static final String EXTRAS_RSSI = "EXTRA_RSSI";
     public static final String EXTRA_RANGE_STATE = "EXTRA_RANGE_STATE";
+    public static final String EXTRA_BATTERY_LEVEL = "EXTRA_BATTERY_LEVEL";
     public static final String ACTION_ENABLE_ADVSP_SOUND =
             "android.lukas.advspvol3.ACTION_ENABLE_ADVSP_SOUND";
     public static final String ACTION_ENABLE_SILENT =
@@ -61,6 +62,7 @@ public class ControlActivity extends Activity {
     private String mDeviceAddress;
     private String mDeviceRSSI;
     private Button mFindDevice;
+    private Button mBatteryLevel;
     public int btn_state = STATE_BUZZER_OFF;
     private static final int STATE_BUZZER_ON = 1;
     private static final int STATE_BUZZER_OFF = 0;
@@ -76,7 +78,7 @@ public class ControlActivity extends Activity {
     int tryCount = 0; //Bandymų skaičiaus indikacija
     int tryRSSICount = 0;
     int setRangeValue;
-
+    String batteryLevel = "";
 
     private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
             new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
@@ -139,6 +141,9 @@ public class ControlActivity extends Activity {
                 Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 v.vibrate(5000);
             }
+            else if(BluetoothLeService.ACTION_BATTERY_LEVEL_READ.equals(action)){
+                batteryLevel = intent.getStringExtra(ControlActivity.EXTRA_BATTERY_LEVEL);
+            }
         }
     };
 
@@ -176,19 +181,19 @@ public class ControlActivity extends Activity {
         Log.d(TAG, "Atsumas paskaiciuots: " + distance + " m");
         if(rssi_int > -30) {
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Signalo stiprumas: Nuostabus");
-        } else if (-30 >rssi_int && rssi_int > -67){
+            textViewRSSI.setText("Prietaisas yra labai labai arti..");
+        } else if (-30 > rssi_int && rssi_int > -67){
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Signalo stiprumas: Labai geras");
-        } else if (-67 >rssi_int && rssi_int > -70){
+            textViewRSSI.setText("Prietaisas yra šalia..");
+        } else if (-67 > rssi_int && rssi_int > -70){
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Signalo stiprumas: Geras");
-        } else if (-70 >rssi_int && rssi_int > -80){
+            textViewRSSI.setText("Prietaisas už vidutinio atstumo..");
+        } else if (-70 > rssi_int && rssi_int > -80){
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Signalo stiprumas: Nelabai");
-        } else if (-80 >rssi_int){
+            textViewRSSI.setText("Prietaisas tolsta..");
+        } else if (-80 > rssi_int){
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Signalo stiprumas: Prie mirties");
+            textViewRSSI.setText("Prietaisas nutolęs");
         }
     }
 
@@ -206,6 +211,7 @@ public class ControlActivity extends Activity {
         mDeviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
         mDeviceRSSI = intent.getStringExtra(EXTRAS_RSSI);
         mFindDevice = (Button) findViewById(R.id.findDevice);
+        mBatteryLevel = (Button)findViewById(R.id.batteryLevelButton);
         textViewDeviceAddr = (TextView)findViewById(R.id.textDeviceAddress);
         textViewRSSI = (TextView)findViewById(R.id.device_rssi);
         textViewState = (TextView)findViewById(R.id.textState);
@@ -263,7 +269,12 @@ public class ControlActivity extends Activity {
                 sendBroadcast(intent);
             }
         });
-
+        mBatteryLevel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast.makeText(getBaseContext(), "Baterijos lygis: " + batteryLevel, Toast.LENGTH_SHORT).show();
+            }
+        });
 
 
         //Rankinis prietaiso garsinio signalo įjungimas
@@ -325,6 +336,7 @@ public class ControlActivity extends Activity {
         intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
         intentFilter.addAction(BluetoothLeService.ACTION_RSSI_VALUE_READ);
         intentFilter.addAction(BluetoothLeService.ACTION_PHONE_ALERT);
+        intentFilter.addAction(BluetoothLeService.ACTION_BATTERY_LEVEL_READ);
         return intentFilter;
     }
 

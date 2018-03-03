@@ -53,6 +53,7 @@ import java.util.UUID;
 
 import static android.lukas.advspvol3.ControlActivity.EXTRAS_DEVICE_NAME;
 import static android.lukas.advspvol3.ControlActivity.EXTRA_RANGE_STATE;
+import static android.view.View.X;
 
 /**
  * Service for managing connection and data communication with a GATT server hosted on a
@@ -66,14 +67,15 @@ public class BluetoothLeService extends Service{
     private BluetoothGatt mBluetoothGatt;
     private int mConnectionState = STATE_DISCONNECTED;;
     private BluetoothGattCharacteristic characteristic;
-    int count_zero = 0; //RSSI signalo pakeitimu skaiciavimas - kiek kartu signalas buvo aukstenis arba zemesnis uz riba
-    int count_not_zero = 0;
+    private BluetoothGattCharacteristic characteristic_battery;
+
     int globalRSSICheck = -67; //defaultinis rssi
     int globalTryCount = 1; //default bandymų skaičius
     int changeRSSICounter = 0;
     //Busenu indikacija
     public int stateRSSI = STATE_BUZZER_OFF; //public, jog kiekvienas metodas galetu pasiekti kintamaji
     public int silentCheck = 0;
+    String batteryData = "";
     private static final int STATE_BUZZER_ON = 1;
     private static final int STATE_BUZZER_OFF = 0;
     private static final int STATE_DISCONNECTED = 0;
@@ -97,11 +99,17 @@ public class BluetoothLeService extends Service{
             "android.lukas.advspvol3.ACTION_RANGE_SET";
     public final static String ACTION_PHONE_ALERT =
             "android.lukas.advspvol3.ACTION_PHONE_ALERT";
+    public final static String ACTION_BATTERY_LEVEL_READ =
+            "android.lukas.advspvol3.ACTION_BATTERY_LEVEL_READ";
 
 
     private final static UUID OWN_PRIVATE_SERVICE = UUID.fromString("5e3c75a8-818a-4be8-90af-2f3e56acd402"); //Privatus servisas skirtas komunikacijai su BLE prietaisu
     private final static UUID OWN_PRIVATE_CHAR = UUID.fromString("e586bd8a-4dc1-4856-b53d-b7611d538061"); //Privati charakteristika su write ir notify parametrais
     private final static UUID OWN_PRIVATE_DES = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"); //Charakteristikos deskriptorius leidziantis keisti charakteristikos duomenis.
+    private static final UUID BATTERY_SERVICE = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb"); // Baterijos paslauga
+    private static final UUID BATTERY_LEVEL_CHARAC = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb"); //Baterijos charakteristika
+
+
 
     //GATT procesu atgalinis pranesimas, kuomet esama skirtingos BLE busenos
 
@@ -120,6 +128,14 @@ public class BluetoothLeService extends Service{
                 Log.i(TAG, "Gaunami palaikomi BLE įrenginio servisai:" +
                         mBluetoothGatt.discoverServices()); //mumis numeta i onServicesDiscovered callbacka'
 
+                TimerTask batteryTask = new TimerTask() {
+                    @Override
+                    public void run() {
+                        readCharacteristic(characteristic_battery);
+                    }
+                };
+                Timer batteryTimer = new Timer();
+                batteryTimer.schedule(batteryTask, 10000, 10000); //apie 10 sekundes
                 //Atitinkama laikotarpi (siuo atveju 2 sekundes) skaitomas RSSI signalas
 
                     TimerTask task = new TimerTask() {
@@ -128,7 +144,9 @@ public class BluetoothLeService extends Service{
                             if (stateRSSI == STATE_BUZZER_OFF && silentCheck == 0) { //tikrinama, jeigu garsinis signalas isjungtas - nuskaityti RSSI signala
                                 mBluetoothGatt.readRemoteRssi(); //numeta i onReadRemoteRSSI callbacka
                                 Log.d(TAG,"readRemoteRssicalled");
+
                             }
+
                         }
                     };
                     Timer rssiTimer = new Timer();
@@ -149,13 +167,6 @@ public class BluetoothLeService extends Service{
                 broadcastUpdate(ACTION_RSSI_VALUE_READ, rssi); //gautos RSSI reiksmes pranesimas kitoms klasems
                 //tikrinimas, jeigu RSSI neatitinka signalo reikšmių, įjungti arba išjungti garsinį signalą. //atitinkamai skaičiuojama tris kartus
                 //siekiant išvengti RSSI signalo stipraus padidėjimo dėl pašalinių objektų.
-
-
-                //TO-DO Fix Mute Setting and rename variables to be more understanding and shit brah
-
-
-
-
                     if (rssi < globalRSSICheck) {
                         changeRSSICounter++;
                         Log.d(TAG, "count_not_zero " + changeRSSICounter);
@@ -165,18 +176,7 @@ public class BluetoothLeService extends Service{
                             writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
                             playAlert();
                             changeRSSICounter = 0;
-
                         }
-                        /*
-                        if(count_not_zero >= 3){
-                            playAlert();
-                            Log.d(TAG, "SKAMBA_NOW");
-                            String data = "not_zero";
-                            writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
-                            count_not_zero = 0;
-                            count_zero = 0;
-                        }
-                        */
                     }
                     else if (rssi > globalRSSICheck) {
                         String data = "disable_sound";
@@ -209,6 +209,7 @@ public class BluetoothLeService extends Service{
                 }
                 //Svarbesnis patikrinimas ar aptinkamas privatus servisas su charakteristika
                 characteristic = gatt.getService(OWN_PRIVATE_SERVICE).getCharacteristic(OWN_PRIVATE_CHAR);
+                characteristic_battery = gatt.getService(BATTERY_SERVICE).getCharacteristic(BATTERY_LEVEL_CHARAC);
                 //Tikrinama ar yra palaikoma notify bei write parametrai
                 if((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE) > 0){
                     Log.d(TAG, "Charakteristika turi write property");
@@ -222,6 +223,10 @@ public class BluetoothLeService extends Service{
                             BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
                     setCharacteristicNotification(characteristic, true);
                     mBluetoothGatt.writeDescriptor(descriptor);
+                }
+                if((characteristic_battery.getProperties() & BluetoothGattCharacteristic.PROPERTY_READ) > 0){
+                    Log.d(TAG, "BATTERY_CHAR_FOUND_AND_READ");
+                    //readCharacteristic(characteristic_battery);
                 }
 
                 Log.d(TAG, "Charakteristikos paieška" + characteristic.toString());
@@ -274,13 +279,27 @@ public class BluetoothLeService extends Service{
         public void onCharacteristicRead(BluetoothGatt gatt,
                                          BluetoothGattCharacteristic characteristic,
                                          int status) {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
+            Log.d(TAG, "CHARACTERSTIC_READ");
+            final byte[] data = characteristic_battery.getValue();
+            Log.d(TAG, "readCHAR_data " + data);
+            if (data != null && data.length > 0) {
+                final StringBuilder stringBuilder = new StringBuilder(data.length);
+                for (byte byteChar : data) {
+                    stringBuilder.append(String.format("%02X ", byteChar));
+
+                    Log.d(TAG, "readCHARCHAR " + String.format("%02X ", byteChar));
+                }
+                batteryData = stringBuilder.toString();
             }
+            final Intent intent = new Intent(BluetoothLeService.ACTION_BATTERY_LEVEL_READ);
+            intent.putExtra(ControlActivity.EXTRA_BATTERY_LEVEL, batteryData);
+            sendBroadcast(intent);
         }
         //Charakteristikos pakeitimas
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt,
                                             BluetoothGattCharacteristic characteristic) {
+            Log.d(TAG, "onCHARACTERISTIC_change");
             //broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
         }
         //Šis metodas atsakingas už mygtuko būsenos filtravimą (kada nuspaustas, kada ne) iš Control Activity klasės
@@ -330,6 +349,10 @@ public class BluetoothLeService extends Service{
             return intentFilter;
         }
     };
+    //kad programa veiktu, kai ekranas uzmiega
+
+
+
     //Pranešimų skleidimas kitoms klasėms, tiksliau RSSI gautos reikšmės perdavimas ir atvaizdavimas į ControlActivity klasę
     private void broadcastUpdate(final String action, final int rssi) {
         final Intent intent = new Intent(action);
@@ -345,36 +368,6 @@ public class BluetoothLeService extends Service{
         final Intent intent = new Intent(action);
         sendBroadcast(intent);
     }
-
-/*
-    private void broadcastUpdate(final String action,
-                                 final BluetoothGattCharacteristic characteristic) {
-        final Intent intent = new Intent(action);
-
-
-        //remove special handling for time being
-        Log.w(TAG, "broadcastUpdate()");
-
-        final byte[] data = characteristic.getValue();
-
-        Log.v(TAG, "data.length: " + data.length);
-
-        if (data != null && data.length > 0) {
-            final StringBuilder stringBuilder = new StringBuilder(data.length);
-            for(byte byteChar : data) {
-                stringBuilder.append(String.format("%02X ", byteChar));
-
-                Log.v(TAG, String.format("%02X ", byteChar));
-            }
-            intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
-        }
-
-        sendBroadcast(intent);
-    }
-    */
-
-
-
     public class LocalBinder extends Binder {
         BluetoothLeService getService() {
             return BluetoothLeService.this;
@@ -465,6 +458,7 @@ public class BluetoothLeService extends Service{
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
         }
+        Log.d(TAG, "readCharacteristic_called");
         mBluetoothGatt.readCharacteristic(characteristic);
     }
     //Nustatomas charakteristikos pranešimas
