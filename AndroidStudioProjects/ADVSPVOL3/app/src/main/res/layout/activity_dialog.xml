@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ControlActivity">
+
+    <TextView
+        android:id="@+id/calibrationTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="31dp"
+        android:gravity="center_horizontal"
+        android:text="@string/calibration_title"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/about"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/calibrationTitle"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:text="@string/description"
+        android:textSize="15sp" />
+
+    <RelativeLayout
+        android:id="@+id/firstButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/oneMeterText"
+        android:layout_alignBottom="@+id/oneMeterText"
+        android:layout_alignLeft="@id/calibrationTitle"
+        android:layout_alignParentStart="true"
+        android:layout_gravity="center_horizontal">
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignEnd="@+id/oneButton"
+            android:layout_alignParentTop="true"
+            android:layout_gravity="right"
+            android:layout_marginEnd="17dp" />
+
+        <Button
+            android:id="@+id/oneButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="26dp"
+            android:background="@null"
+            android:gravity="center"
+            android:text="@string/getCalibration"
+            android:textColor="#ffffff" />
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/secondButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/firstButton"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="49dp">
+
+        <ProgressBar
+            android:id="@+id/progressBartwo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignEnd="@+id/twoButton"
+            android:layout_alignParentTop="true"
+            android:layout_gravity="right"
+            android:layout_marginEnd="17dp" />
+
+        <Button
+            android:id="@+id/twoButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="26dp"
+            android:background="@null"
+            android:gravity="center"
+            android:text="@string/getCalibration"
+            android:textColor="#ffffff" />
+
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/thirdButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/secondButton"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="41dp">
+
+        <ProgressBar
+            android:id="@+id/progressBarthree"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignEnd="@+id/threeButton"
+            android:layout_alignParentTop="true"
+            android:layout_marginEnd="17dp" />
+
+        <Button
+            android:id="@+id/threeButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="26dp"
+            android:background="@null"
+            android:gravity="center"
+            android:text="@string/getCalibration"
+            android:textColor="#ffffff" />
+
+    </RelativeLayout>
+
+
+    <TextView
+        android:id="@+id/oneMeterText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/calibrationTitle"
+        android:layout_alignStart="@+id/about"
+        android:layout_centerVertical="true"
+        android:text="@string/MeterOne" />
+
+    <TextView
+        android:id="@+id/twoMeterText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/thirdButton"
+        android:layout_alignEnd="@+id/oneMeterText"
+        android:layout_alignStart="@+id/oneMeterText"
+        android:layout_alignWithParentIfMissing="true"
+        android:text="@string/MeterTwo" />
+
+    <TextView
+        android:id="@+id/threeMeterText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/thirdButton"
+        android:layout_alignEnd="@+id/twoMeterText"
+        android:layout_alignStart="@+id/twoMeterText"
+        android:text="@string/MeterThree" />
+
+    <Button
+        android:id="@+id/resetButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="15dp"
+        android:background="@null"
+        android:gravity="center"
+        android:text="@string/reset"
+        android:textColor="#ffffff" />
+
+</RelativeLayout>

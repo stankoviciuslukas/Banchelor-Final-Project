@@ -45,6 +45,7 @@ public class ControlActivity extends Activity {
     private final static String TAG = ControlActivity.class.getSimpleName();
     public static final String EXTRAS_DEVICE_RSSI = "DEVICE_RSSI";
     public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
+    public static final String EXTRAS_MEAN_RSSI = "EXTRAS_MEAN_RSSI";
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
     public static final String EXTRAS_RSSI = "EXTRA_RSSI";
     public static final String EXTRA_RANGE_STATE = "EXTRA_RANGE_STATE";
@@ -63,6 +64,7 @@ public class ControlActivity extends Activity {
     private String mDeviceRSSI;
     private Button mFindDevice;
     private Button mBatteryLevel;
+    private Button mAutoCalibration;
     public int btn_state = STATE_BUZZER_OFF;
     private static final int STATE_BUZZER_ON = 1;
     private static final int STATE_BUZZER_OFF = 0;
@@ -78,7 +80,13 @@ public class ControlActivity extends Activity {
     int tryCount = 0; //Bandymų skaičiaus indikacija
     int tryRSSICount = 0;
     int setRangeValue;
+    int cnt = 0;
+    int oneMeter, twoMeters, threeMeters;
+    int constSum;
+    double distanceByRSSI;
+    double defaultmagic = 61.15;
     String batteryLevel = "";
+    String meanRSSI;
 
     private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
             new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
@@ -115,6 +123,7 @@ public class ControlActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
+            Log.d(TAG, "ControlActivity_Broadcast_called");
             if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
                 state = State.CONNECTED;
                 updateConnectionState(); //Atnaujinama prisijungimo būsena
@@ -133,7 +142,6 @@ public class ControlActivity extends Activity {
             } else if (BluetoothLeService.ACTION_RSSI_VALUE_READ.equals(action)) {
                 mDeviceRSSI = intent.getStringExtra(EXTRAS_DEVICE_RSSI);
                 updateRSSIValue(mDeviceRSSI);
-                //playAlert(mDeviceRSSI);
                 Log.d(TAG, "mDeviceRSSI = " + mDeviceRSSI);
             }
             else if (BluetoothLeService.ACTION_PHONE_ALERT.equals(action)){
@@ -144,8 +152,38 @@ public class ControlActivity extends Activity {
             else if(BluetoothLeService.ACTION_BATTERY_LEVEL_READ.equals(action)){
                 batteryLevel = intent.getStringExtra(ControlActivity.EXTRA_BATTERY_LEVEL);
             }
+            else if(DialogActivity.ACTION_SEND_MEAN_RSSI.equals(action)){
+                cnt++;
+                meanRSSI = intent.getStringExtra(ControlActivity.EXTRAS_MEAN_RSSI);
+                Log.d(TAG, "GOT_meanRSSI" + meanRSSI);
+
+                if(Integer.valueOf(meanRSSI) == 0){
+                    defaultmagic = 61.15;
+                    Log.d(TAG, "defaultmagic: GOT IT");
+                    cnt = 0;
+                }
+                if(cnt == 1){
+                    oneMeter = Integer.valueOf(meanRSSI);
+                }
+                else if(cnt == 2){
+                    twoMeters = Integer.valueOf(meanRSSI);
+                }
+                else if(cnt == 3){
+                    threeMeters = Integer.valueOf(meanRSSI);
+                    createNewDefault();
+                    cnt = 0;
+                }
+                Log.d(TAG, "Gauta_mean_rssi " + meanRSSI);
+            }
         }
     };
+
+    private void createNewDefault() {
+        constSum = (-40-(oneMeter)) + (-46-(twoMeters)) + (-49-(threeMeters));
+        constSum = constSum/3;
+        Log.d(TAG, "calibrationvalue: " + constSum);
+        defaultmagic = 32.45 + constSum;
+    }
 
 
     //Atgalinio mygtuko paspaudimas, kuris sukuria Alert pranešimą su pasirinkimo variantais.
@@ -175,10 +213,6 @@ public class ControlActivity extends Activity {
     //Čia dar reikės su atstumu kažkaip pažaisti??
     private void updateRSSIValue(String get_rssi){
         double rssi_int = Integer.parseInt(get_rssi);
-        double A = (rssi_int+33)/-20;
-        Log.d(TAG, "paskaiciuotas A = " + A);
-        double distance = Math.pow(10,A);
-        Log.d(TAG, "Atsumas paskaiciuots: " + distance + " m");
         if(rssi_int > -30) {
             Log.d(TAG, "Signalo stiprumas: " + get_rssi);
             textViewRSSI.setText("Prietaisas yra labai labai arti..");
@@ -196,10 +230,6 @@ public class ControlActivity extends Activity {
             textViewRSSI.setText("Prietaisas nutolęs");
         }
     }
-
-    //private void clearUI() {
-    //    mGattServicesList.setAdapter((SimpleExpandableListAdapter) null);
-    //}
     //Pagrindinis metodas sukuriamas, kai paleidžiama ControlActivity
     //Sukuriami reikalingi elementai informacijos atvaizdavimui.
     @Override
@@ -212,6 +242,7 @@ public class ControlActivity extends Activity {
         mDeviceRSSI = intent.getStringExtra(EXTRAS_RSSI);
         mFindDevice = (Button) findViewById(R.id.findDevice);
         mBatteryLevel = (Button)findViewById(R.id.batteryLevelButton);
+        mAutoCalibration = (Button)findViewById(R.id.autoCalibration);
         textViewDeviceAddr = (TextView)findViewById(R.id.textDeviceAddress);
         textViewRSSI = (TextView)findViewById(R.id.device_rssi);
         textViewState = (TextView)findViewById(R.id.textState);
@@ -245,6 +276,10 @@ public class ControlActivity extends Activity {
                 if(isChanged){
                     setRangeValue = seekBar.getProgress();
                     if(setRangeValue > 50){
+
+                        //cia atstumas nuo rssi lygtis turi buti
+
+                        calcDistance();
                         tryRSSICount = 1; //Jeigu prietaisas yra toli - RSSI šuoliai bus mažesni
                         //darom prielaidą, jog mažiau kliūčių kažkokių gali atsirasti
                     }
@@ -299,11 +334,27 @@ public class ControlActivity extends Activity {
             }
         });
 
+        mAutoCalibration.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent action = new Intent(ControlActivity.this, DialogActivity.class);
+                startActivity(action);
+            }
+        });
         //Paleidžiama BluetoothLeService klasė, kuri iš esmės atsakinga už visą sujungimo su prietaisu valdymą
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
         // sukuria ir sujungia service'a su bluetoothleservice objektu, kuris prijungia ir isjungia visus profilius(servisus)
     }
+    //rankinis kalibravimas
+    private void calcDistance() {
+        distanceByRSSI = ((Math.pow(10, (Integer.valueOf(meanRSSI) - defaultmagic)/20))/2400)*1000; //pagal rssi atstumas i m
+    }
+        //pirma reikia sudaryti standartine formule prie kokiu atstumu yra kokie rssi
+        //gauti antra varianta pagal rankine kalibravima
+        //gauti skirtuma - prideti prie teorinio modelio
+        //reset - viska atstato i pradine busena
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -317,7 +368,7 @@ public class ControlActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        unregisterReceiver(mGattUpdateReceiver);
+        //unregisterReceiver(mGattUpdateReceiver);
     }
 
 
@@ -325,6 +376,7 @@ public class ControlActivity extends Activity {
     protected void onDestroy() { //cia terminuojam procesa, kai viska uzbaigiam
         super.onDestroy();
         unbindService(mServiceConnection);
+        //unregisterReceiver(mGattUpdateReceiver);
         mBluetoothLeService = null;
     }
     //klausomes ka klase bluetoothleservice broadcastina, tuos broadcastus pagaunam ir pagal tai vykdom kitas funkcijas
@@ -337,6 +389,8 @@ public class ControlActivity extends Activity {
         intentFilter.addAction(BluetoothLeService.ACTION_RSSI_VALUE_READ);
         intentFilter.addAction(BluetoothLeService.ACTION_PHONE_ALERT);
         intentFilter.addAction(BluetoothLeService.ACTION_BATTERY_LEVEL_READ);
+        intentFilter.addAction(DialogActivity.ACTION_SEND_MEAN_RSSI);
+        Log.d(TAG, "IntentFilter_called");
         return intentFilter;
     }
 

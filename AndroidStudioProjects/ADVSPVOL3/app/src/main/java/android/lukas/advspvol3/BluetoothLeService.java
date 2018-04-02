@@ -1,21 +1,4 @@
 package android.lukas.advspvol3;
-/*
- * Copyright (C) 2013 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import android.app.AlertDialog;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 
@@ -45,6 +28,10 @@ import android.widget.Toast;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.Timer;
@@ -55,10 +42,6 @@ import static android.lukas.advspvol3.ControlActivity.EXTRAS_DEVICE_NAME;
 import static android.lukas.advspvol3.ControlActivity.EXTRA_RANGE_STATE;
 import static android.view.View.X;
 
-/**
- * Service for managing connection and data communication with a GATT server hosted on a
- * given Bluetooth LE device.
- */
 public class BluetoothLeService extends Service{
     private final static String TAG = BluetoothLeService.class.getSimpleName();
     private BluetoothManager mBluetoothManager;
@@ -69,9 +52,12 @@ public class BluetoothLeService extends Service{
     private BluetoothGattCharacteristic characteristic;
     private BluetoothGattCharacteristic characteristic_battery;
 
-    int globalRSSICheck = -67; //defaultinis rssi
     int globalTryCount = 1; //default bandymų skaičius
-    int changeRSSICounter = 0;
+    double distance;
+    double defaultmagic = 61.15;
+    ArrayList<Integer> rssiArray = new ArrayList<Integer>();
+    //int rssiArray[];
+    int meanRSSICalc = 0;
     //Busenu indikacija
     public int stateRSSI = STATE_BUZZER_OFF; //public, jog kiekvienas metodas galetu pasiekti kintamaji
     public int silentCheck = 0;
@@ -116,6 +102,7 @@ public class BluetoothLeService extends Service{
     public final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            Log.d(TAG, "onConnectionStateChange_called");
             //Būsenų gaviklis, pagal jį valdomas prietaiso garsinis signalas
             registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
             String intentAction;
@@ -164,27 +151,59 @@ public class BluetoothLeService extends Service{
         public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) { //RSSI signalo nuskaitymo funckija, kiekvieciama kiekviena kart
             //po mBluetoothGatt.readRemoteRssi();
             if(status == BluetoothGatt.GATT_SUCCESS) {
-                broadcastUpdate(ACTION_RSSI_VALUE_READ, rssi); //gautos RSSI reiksmes pranesimas kitoms klasems
-                //tikrinimas, jeigu RSSI neatitinka signalo reikšmių, įjungti arba išjungti garsinį signalą. //atitinkamai skaičiuojama tris kartus
-                //siekiant išvengti RSSI signalo stipraus padidėjimo dėl pašalinių objektų.
-                    if (rssi < globalRSSICheck) {
-                        changeRSSICounter++;
-                        Log.d(TAG, "count_not_zero " + changeRSSICounter);
-                        if(changeRSSICounter > globalTryCount){
-                            Log.d(TAG, "IF_veikia");
-                            String data = "enable_sound";
-                            writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
-                            playAlert();
-                            changeRSSICounter = 0;
-                        }
-                    }
-                    else if (rssi > globalRSSICheck) {
-                        String data = "disable_sound";
-                        writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
-                        //count_not_zero = 0;
-                    }
+                //GAUSO FILTRAS
+                gaussianFilter(rssi);
             }
         }
+        private void gaussianFilter(int rssi) {
+            rssiArray.add(rssi);
+            Log.d(TAG, "rssiArray_add" + rssiArray);
+            if(rssiArray.size() == 10){
+                //ArrayList<Integer> rssiArray_list = new ArrayList<Integer>(Arrays.asList(rssiArray));
+                //List<Integer> intList = new ArrayList<Integer>();
+                //for(int i : rssiArray){
+                //    intList.add(i);
+                //}
+                Collections.sort(rssiArray, new Comparator<Integer>() {
+                    @Override
+                    public int compare(Integer t1, Integer t2) {
+                        return t1.compareTo(t2);
+                    }
+                });
+                Log.d(TAG, "rssiArray_ca" + rssiArray);
+                for(int i = 2; i < 8; i++){
+                    meanRSSICalc = meanRSSICalc + rssiArray.get(i);
+                }
+                rssi = meanRSSICalc/6;
+                rssiArray.clear();
+                //rssiArray = null;
+                Log.d(TAG, "rssiArray_vid = " + rssi);
+                broadcastUpdate(ACTION_RSSI_VALUE_READ, rssi);                 //gautos RSSI reiksmes pranesimas kitoms klasems
+                meanRSSICalc = 0;
+                checkDeviceStatus(rssi);
+            }
+        }
+
+        private void checkDeviceStatus(int rssi) {
+            //tikrinimas, jeigu RSSI neatitinka signalo reikšmių, įjungti arba išjungti garsinį signalą. //atitinkamai skaičiuojama tris kartus
+            //siekiant išvengti RSSI signalo stipraus padidėjimo dėl pašalinių objektų.
+            distance = ((Math.pow(10, (-rssi - defaultmagic)/20))/2400)*1000;
+
+            Log.d(TAG, "checkDeviceStatus: RSSI" + rssi + " distance: " + distance);
+
+
+
+            if (distance > 5) {
+                    String data = "enable_sound";
+                    writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
+                    playAlert();
+            }
+            else if (distance < 5) {
+                String data = "disable_sound";
+                writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
+            }
+        }
+
         private void playAlert() {
             final Intent intent = new Intent(BluetoothLeService.ACTION_PHONE_ALERT);
             intent.setAction(BluetoothLeService.ACTION_PHONE_ALERT);
@@ -349,6 +368,8 @@ public class BluetoothLeService extends Service{
             return intentFilter;
         }
     };
+
+
     //kad programa veiktu, kai ekranas uzmiega
 
 

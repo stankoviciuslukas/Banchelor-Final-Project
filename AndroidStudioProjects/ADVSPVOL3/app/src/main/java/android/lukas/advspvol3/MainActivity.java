@@ -215,10 +215,9 @@ public class MainActivity extends Activity {
                                 builder.setPositiveButton("PRISIJUNGTI", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-                                        if(deviceUserSetName == ""){
+                                        deviceUserSetName = input.getText().toString();
+                                        if(deviceUserSetName.equals("")) {
                                             deviceUserSetName = "ADVSP";
-                                        }else{
-                                            deviceUserSetName = input.getText().toString();
                                         }
                                         final Intent intent = new Intent(MainActivity.this, ControlActivity.class);
                                         intent.putExtra(ControlActivity.EXTRAS_DEVICE_NAME, deviceUserSetName);
@@ -278,6 +277,7 @@ public class MainActivity extends Activity {
         private void addBluetoothDevice(BluetoothDevice device, int new_rssi){ //Prietaisų pridėjimas į sąrašą
 
             if(!listBluetoothDevice.contains(device)) {
+                Log.d(TAG, "SONY____" + device.getAddress());
                 //Jeigu prietaiso nėra sąraše, jį pridedam
                 if (mac.equals(device.getAddress())) { //MAC filtras, jog tik ADVSP prietaisas būtų rastas
                     foundADVSP = 1;

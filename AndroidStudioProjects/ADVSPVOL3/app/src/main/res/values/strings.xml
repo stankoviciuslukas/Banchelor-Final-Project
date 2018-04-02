@@ -15,12 +15,19 @@
     <string name="no_devices_found">No devices found</string>
     <string name="list_view">List</string>
     <string name="get_rssi">Founded RSSI</string>
-    <string name="rssi_begin">Nustatoma RSSI</string>
+    <string name="rssi_begin">Ieškomas prietaisas..</string>
     <string name="location_house">Saugoma vieta - namai</string>
     <string name="location_outside">Saugoma vieta - laukas</string>
     <string name="silent_hours">Begarsis režimas</string>
     <string name="findDevice">Rasti\nADVSP</string>
-    <string name="rangeSetText">Nuotolio nustatymas: Arti - Toli</string>
+    <string name="rangeSetText">Atstumo nustatymas</string>
     <string name="bateryLevel">Baterijos\nlygis</string>
-
+    <string name="calibration">Vartotojo\nKalibracija</string>
+    <string name="calibration_title">Rankinis\nkalibravimas</string>
+    <string name="getCalibration">NUSTATYTI</string>
+    <string name="MeterOne">Paspauskite nustatyti, kai būsite nutolęs 1 metrą</string>
+    <string name="MeterTwo">Paspauskite nustatyti, kai būsite nutolęs 2 metrus</string>
+    <string name="MeterThree">Paspauskite nustatyti, kai būsite nutolęs 3 metrus</string>
+    <string name="description">ADVSP turi standartinį atstumo kalibravimą.\nSiekiant tiklesnių matavimų galima, prie\nskirtingo atstumo, nustatyti signalo lygį.</string>
+    <string name="reset">RESET</string>
 </resources>
