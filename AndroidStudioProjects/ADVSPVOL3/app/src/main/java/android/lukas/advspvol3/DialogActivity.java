@@ -20,71 +20,62 @@ import android.widget.Toast;
 
 import java.util.Timer;
 import java.util.TimerTask;
-
-
-
 public class DialogActivity extends Activity{
     private final static String TAG = DialogActivity.class.getSimpleName();
-    Button oneMeter, twoMeter, threeMeter, resetBtn;
-    private ProgressBar firstPR, secondPR, thirdPR;
+
     public static final String DEVICE_RSSI = "DEVICE_RSSI";
     public static final String ACTION_SEND_MEAN_RSSI =
             "android.lukas.advspvol3.ACTION_SEND_MEAN_RSSI";
-    int gotRSSI;
-    int intRSSI = 0, sumRSSI = 0, rssiHold;
+    int receivedRSSI;
+    Button oneMeter, twoMeter, threeMeter, resetBtn;
+    private ProgressBar firstProgressBar, secondProgressBar, thirdProgressBar;
     CountDownTimer waitTimer;
     private static final int BUTTON_OFF = 0;
     private static final int BUTTON_ON = 1;
-    public int FIRST_BUTTON_STATE = BUTTON_OFF;
-    public int SECOND_BUTTON_STATE = BUTTON_OFF;
-    public int THIRD_BUTTON_STATE = BUTTON_OFF;
-    public int RESET_BUTTON_STATE = BUTTON_OFF;
-
-
+    public int oneMeterButtonState = BUTTON_OFF;
+    public int twoMeterButtonState = BUTTON_OFF;
+    public int threeMeterButtonState = BUTTON_OFF;
+    public int resetButtonState = BUTTON_OFF;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dialog);
-        oneMeter = (Button) findViewById(R.id.oneButton);
-        twoMeter = (Button) findViewById(R.id.twoButton);
-        threeMeter = (Button) findViewById(R.id.threeButton);
-        resetBtn = (Button) findViewById(R.id.resetButton);
-        firstPR = (ProgressBar) findViewById(R.id.progressBar);
-        secondPR = (ProgressBar) findViewById(R.id.progressBartwo);
-        thirdPR = (ProgressBar) findViewById(R.id.progressBarthree);
-        firstPR.setVisibility(View.INVISIBLE);
-        secondPR.setVisibility(View.INVISIBLE);
-        thirdPR.setVisibility(View.INVISIBLE);
+        oneMeter = findViewById(R.id.oneButton);
+        twoMeter = findViewById(R.id.twoButton);
+        threeMeter = findViewById(R.id.threeButton);
+        resetBtn = findViewById(R.id.resetButton);
+        firstProgressBar = findViewById(R.id.progressBar);
+        secondProgressBar = findViewById(R.id.progressBartwo);
+        thirdProgressBar = findViewById(R.id.progressBarthree);
+        firstProgressBar.setVisibility(View.INVISIBLE);
+        secondProgressBar.setVisibility(View.INVISIBLE);
+        thirdProgressBar.setVisibility(View.INVISIBLE);
         oneMeter.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                FIRST_BUTTON_STATE = BUTTON_ON;
+                oneMeterButtonState = BUTTON_ON;
                 oneMeter.setVisibility(View.INVISIBLE);
-                firstPR.setVisibility(View.VISIBLE);
+                firstProgressBar.setVisibility(View.VISIBLE);
                 countRSSIvalues();
                 //checkState();
             }
         });
-
         twoMeter.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                SECOND_BUTTON_STATE = BUTTON_ON;
+                twoMeterButtonState = BUTTON_ON;
                 twoMeter.setVisibility(View.INVISIBLE);
-                secondPR.setVisibility(View.VISIBLE);
+                secondProgressBar.setVisibility(View.VISIBLE);
                 countRSSIvalues();
-                //checkState();
             }
         });
         threeMeter.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                THIRD_BUTTON_STATE = BUTTON_ON;
+                threeMeterButtonState = BUTTON_ON;
                 threeMeter.setVisibility(View.INVISIBLE);
-                thirdPR.setVisibility(View.VISIBLE);
+                thirdProgressBar.setVisibility(View.VISIBLE);
                 countRSSIvalues();
-                //checkState();
             }
         });
         resetBtn.setOnClickListener(new View.OnClickListener() {
@@ -92,10 +83,10 @@ public class DialogActivity extends Activity{
             public void onClick(View view) {
                 Toast.makeText(DialogActivity.this, "Atstatyti gamikliniai nustatymai", Toast.LENGTH_SHORT)
                         .show();
-                FIRST_BUTTON_STATE = BUTTON_OFF;
-                SECOND_BUTTON_STATE = BUTTON_OFF;
-                THIRD_BUTTON_STATE = BUTTON_OFF;
-                RESET_BUTTON_STATE = BUTTON_ON;
+                oneMeterButtonState = BUTTON_OFF;
+                twoMeterButtonState = BUTTON_OFF;
+                threeMeterButtonState = BUTTON_OFF;
+                resetButtonState = BUTTON_ON;
                 oneMeter.setVisibility(View.VISIBLE);
                 oneMeter.setText("NUSTATYTI");
                 oneMeter.setClickable(true);
@@ -109,63 +100,60 @@ public class DialogActivity extends Activity{
             }
         });
     }
-
     private void countRSSIvalues() {
-        waitTimer = new CountDownTimer(3000,1000) {
+        waitTimer = new CountDownTimer(10000,1000) {
             @Override
             public void onTick(long l) {
             }
-
             @Override
             public void onFinish() {
                 Log.d(TAG, "onFinish_called");
+                Log.d(TAG, "receivedRSSI: "+ receivedRSSI);
                 waitTimer.cancel();
                 checkState();
             }
         }.start();
-
     }
-
     private void checkState() {
 
-        if (FIRST_BUTTON_STATE == BUTTON_ON) {
-            Log.d(TAG, "meanRSSI = " + gotRSSI);
-            firstPR.setVisibility(View.GONE);
+        if (oneMeterButtonState == BUTTON_ON) {
+            Log.d(TAG, "meanRSSI = " + receivedRSSI);
+            firstProgressBar.setVisibility(View.GONE);
             oneMeter.setVisibility(View.VISIBLE);
             oneMeter.setText("OK");
             oneMeter.setClickable(false);
-            sendRSSIValue(gotRSSI);
+            sendMeanValue(receivedRSSI);
         }
-        if (SECOND_BUTTON_STATE == BUTTON_ON){
-            Log.d(TAG, "meanRSSI = " + gotRSSI);
-            secondPR.setVisibility(View.GONE);
+        if (twoMeterButtonState == BUTTON_ON){
+            Log.d(TAG, "meanRSSI = " + receivedRSSI);
+            secondProgressBar.setVisibility(View.GONE);
             twoMeter.setVisibility(View.VISIBLE);
             twoMeter.setText("OK");
             twoMeter.setClickable(false);
-            sendRSSIValue(gotRSSI);
+            sendMeanValue(receivedRSSI);
         }
-        if (THIRD_BUTTON_STATE == BUTTON_ON){
-            Log.d(TAG, "meanRSSI = " + gotRSSI);
-            thirdPR.setVisibility(View.GONE);
+        if (threeMeterButtonState == BUTTON_ON){
+            Log.d(TAG, "meanRSSI = " + receivedRSSI);
+            thirdProgressBar.setVisibility(View.GONE);
             threeMeter.setVisibility(View.VISIBLE);
             threeMeter.setText("OK");
             threeMeter.setClickable(false);
-            sendRSSIValue(gotRSSI);
+            sendMeanValue(receivedRSSI);
         }
-        if (RESET_BUTTON_STATE == BUTTON_ON){
+        if (resetButtonState == BUTTON_ON){
             int defaultConst = 0;
-            RESET_BUTTON_STATE = BUTTON_OFF;
-            sendRSSIValue(defaultConst);
+            resetButtonState = BUTTON_OFF;
+            sendMeanValue(defaultConst);
             Log.d(TAG, "sendRSSI" + defaultConst);
         }
     }
 
-    private void sendRSSIValue(int rssi) {
+    private void sendMeanValue(int rssi) {
         final Intent intent = new Intent(ACTION_SEND_MEAN_RSSI);
         String hold = Integer.toString(rssi);
         intent.putExtra(ControlActivity.EXTRAS_MEAN_RSSI, hold);
         intent.setAction(DialogActivity.ACTION_SEND_MEAN_RSSI);
-        Log.d(TAG,"sendRSSIValue_called" + hold);
+        Log.d(TAG,"sendMeanValue_called" + hold);
         sendBroadcast(intent);
     }
 
@@ -174,8 +162,8 @@ public class DialogActivity extends Activity{
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
             if(BluetoothLeService.ACTION_RSSI_VALUE_READ.equals(action)) {
-                gotRSSI = Integer.valueOf(intent.getStringExtra(DEVICE_RSSI));
-                Log.d(TAG, "BroadcastReceiver: meanRSSI" + gotRSSI);
+                receivedRSSI = Integer.valueOf(intent.getStringExtra(DEVICE_RSSI));
+                Log.d(TAG, "BroadcastReceiver: meanRSSI" + receivedRSSI);
             }
         }
     };
@@ -194,7 +182,4 @@ public class DialogActivity extends Activity{
         intentFilter.addAction(BluetoothLeService.ACTION_RSSI_VALUE_READ);
         return intentFilter;
     }
-
-
-
 }

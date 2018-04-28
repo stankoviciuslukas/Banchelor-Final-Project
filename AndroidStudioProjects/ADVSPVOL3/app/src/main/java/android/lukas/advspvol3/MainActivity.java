@@ -67,8 +67,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         findViewById(R.id.loadingPanel).setVisibility(View.INVISIBLE); //paslepiam loadinimo bara
-        mDeviceRSSI = (TextView) findViewById(R.id.get_rssi);
-        mDeviceName = (TextView)findViewById(R.id.ble_name);
+        mDeviceRSSI = findViewById(R.id.get_rssi);
+        mDeviceName = findViewById(R.id.ble_name);
         Typeface typeface = Typeface.createFromAsset(getAssets(), "fonts/nevis.ttf");
         mDeviceName.setTypeface(typeface);
         mDeviceName.setText("ADVSP");
@@ -88,7 +88,7 @@ public class MainActivity extends Activity {
             return;
         }
 
-        btnScan = (Button) findViewById(R.id.btn_scan); //ID priskirimas prie IEŠKOTI mygtukas
+        btnScan = findViewById(R.id.btn_scan); //ID priskirimas prie IEŠKOTI mygtukas
         btnScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -117,7 +117,7 @@ public class MainActivity extends Activity {
         });
         */
 
-        listViewLE = (ListView) findViewById(R.id.lelist); //List ID priskirimas
+        listViewLE = findViewById(R.id.lelist); //List ID priskirimas
         //Sąrašų iniciavimas
         listBluetoothDevice = new ArrayList<>();
         adapterLeScanResult = new ArrayAdapter<BluetoothDevice>(this, android.R.layout.simple_expandable_list_item_1,

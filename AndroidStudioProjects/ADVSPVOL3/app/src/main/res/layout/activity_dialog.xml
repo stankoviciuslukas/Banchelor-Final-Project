@@ -27,6 +27,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"
         android:gravity="center"
+        android:textStyle="italic"
         android:text="@string/description"
         android:textSize="15sp" />
 
@@ -166,6 +167,7 @@
         android:background="@null"
         android:gravity="center"
         android:text="@string/reset"
+        android:textStyle="italic"
         android:textColor="#ffffff" />
 
 </RelativeLayout>

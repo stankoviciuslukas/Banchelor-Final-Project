@@ -20,7 +20,7 @@
     <string name="location_outside">Saugoma vieta - laukas</string>
     <string name="silent_hours">Begarsis režimas</string>
     <string name="findDevice">Rasti\nADVSP</string>
-    <string name="rangeSetText">Atstumo nustatymas</string>
+    <string name="rangeSetText">Atstumo nustatymas - nuo 1 iki 10 metrų</string>
     <string name="bateryLevel">Baterijos\nlygis</string>
     <string name="calibration">Vartotojo\nKalibracija</string>
     <string name="calibration_title">Rankinis\nkalibravimas</string>
@@ -28,6 +28,6 @@
     <string name="MeterOne">Paspauskite nustatyti, kai būsite nutolęs 1 metrą</string>
     <string name="MeterTwo">Paspauskite nustatyti, kai būsite nutolęs 2 metrus</string>
     <string name="MeterThree">Paspauskite nustatyti, kai būsite nutolęs 3 metrus</string>
-    <string name="description">ADVSP turi standartinį atstumo kalibravimą.\nSiekiant tiklesnių matavimų galima, prie\nskirtingo atstumo, nustatyti signalo lygį.</string>
+    <string name="description">ADVSP turi standartinį atstumo kalibravimą.\nSiekiant tiklesnių matavimų galima, prie\nskirtingo atstumo, nustatyti signalo lygį.\nPradėti matuoti nuo 1 metro</string>
     <string name="reset">RESET</string>
 </resources>

@@ -48,20 +48,19 @@ public class BluetoothLeService extends Service{
     private BluetoothAdapter mBluetoothAdapter;
     private String mBluetoothDeviceAddress;
     private BluetoothGatt mBluetoothGatt;
-    private int mConnectionState = STATE_DISCONNECTED;;
+    private int mConnectionState = STATE_DISCONNECTED;
     private BluetoothGattCharacteristic characteristic;
     private BluetoothGattCharacteristic characteristic_battery;
 
-    int globalTryCount = 1; //default bandymų skaičius
     double distance;
-    double defaultmagic = 61.15;
-    ArrayList<Integer> rssiArray = new ArrayList<Integer>();
-    //int rssiArray[];
+    double defaultConstant = 61.15;
+    ArrayList<Integer> rssiArrayHold = new ArrayList<Integer>();
     int meanRSSICalc = 0;
+    int distanceRangeCheck = 4;
     //Busenu indikacija
-    public int stateRSSI = STATE_BUZZER_OFF; //public, jog kiekvienas metodas galetu pasiekti kintamaji
-    public int silentCheck = 0;
-    String batteryData = "";
+    public int buzzerState = STATE_BUZZER_OFF; //public, jog kiekvienas metodas galetu pasiekti kintamaji
+    public int silentModeCheck = 0;
+    String receivedBatteryLevel = "";
     private static final int STATE_BUZZER_ON = 1;
     private static final int STATE_BUZZER_OFF = 0;
     private static final int STATE_DISCONNECTED = 0;
@@ -128,7 +127,7 @@ public class BluetoothLeService extends Service{
                     TimerTask task = new TimerTask() {
                         @Override
                         public void run() {
-                            if (stateRSSI == STATE_BUZZER_OFF && silentCheck == 0) { //tikrinama, jeigu garsinis signalas isjungtas - nuskaityti RSSI signala
+                            if (buzzerState == STATE_BUZZER_OFF && silentModeCheck == 0) { //tikrinama, jeigu garsinis signalas isjungtas - nuskaityti RSSI signala
                                 mBluetoothGatt.readRemoteRssi(); //numeta i onReadRemoteRSSI callbacka
                                 Log.d(TAG,"readRemoteRssicalled");
 
@@ -137,7 +136,7 @@ public class BluetoothLeService extends Service{
                         }
                     };
                     Timer rssiTimer = new Timer();
-                    rssiTimer.schedule(task, 2000, 2000); //apie 2 sekundes
+                    rssiTimer.schedule(task, 500, 500); //apie 2 sekundes
 
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) { //Jeigu prietaisas atsijungia nuo mobilaus irenginio - apie tai pranesti
@@ -156,28 +155,22 @@ public class BluetoothLeService extends Service{
             }
         }
         private void gaussianFilter(int rssi) {
-            rssiArray.add(rssi);
-            Log.d(TAG, "rssiArray_add" + rssiArray);
-            if(rssiArray.size() == 10){
-                //ArrayList<Integer> rssiArray_list = new ArrayList<Integer>(Arrays.asList(rssiArray));
-                //List<Integer> intList = new ArrayList<Integer>();
-                //for(int i : rssiArray){
-                //    intList.add(i);
-                //}
-                Collections.sort(rssiArray, new Comparator<Integer>() {
+            rssiArrayHold.add(rssi);
+            Log.d(TAG, "rssiArrayHold_add" + rssiArrayHold);
+            if(rssiArrayHold.size() == 10){
+                Collections.sort(rssiArrayHold, new Comparator<Integer>() {
                     @Override
                     public int compare(Integer t1, Integer t2) {
                         return t1.compareTo(t2);
                     }
                 });
-                Log.d(TAG, "rssiArray_ca" + rssiArray);
+                Log.d(TAG, "rssiArrayHold_ca" + rssiArrayHold);
                 for(int i = 2; i < 8; i++){
-                    meanRSSICalc = meanRSSICalc + rssiArray.get(i);
+                    meanRSSICalc = meanRSSICalc + rssiArrayHold.get(i);
                 }
                 rssi = meanRSSICalc/6;
-                rssiArray.clear();
-                //rssiArray = null;
-                Log.d(TAG, "rssiArray_vid = " + rssi);
+                rssiArrayHold.clear();
+                Log.d(TAG, "rssiArrayHold_vid = " + rssi);
                 broadcastUpdate(ACTION_RSSI_VALUE_READ, rssi);                 //gautos RSSI reiksmes pranesimas kitoms klasems
                 meanRSSICalc = 0;
                 checkDeviceStatus(rssi);
@@ -185,22 +178,17 @@ public class BluetoothLeService extends Service{
         }
 
         private void checkDeviceStatus(int rssi) {
-            //tikrinimas, jeigu RSSI neatitinka signalo reikšmių, įjungti arba išjungti garsinį signalą. //atitinkamai skaičiuojama tris kartus
-            //siekiant išvengti RSSI signalo stipraus padidėjimo dėl pašalinių objektų.
-            distance = ((Math.pow(10, (-rssi - defaultmagic)/20))/2400)*1000;
-
+            distance = ((Math.pow(10, (-rssi - defaultConstant)/20))/2400)*1000;
             Log.d(TAG, "checkDeviceStatus: RSSI" + rssi + " distance: " + distance);
-
-
-
-            if (distance > 5) {
+            //Pagal ControlActivity nustatyta atstuma ijungia arba ne cypsiu
+            if (distance > distanceRangeCheck) {
                     String data = "enable_sound";
-                    writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
+                    writeCharacteristic(characteristic, data);
                     playAlert();
             }
-            else if (distance < 5) {
+            else if (distance < distanceRangeCheck) {
                 String data = "disable_sound";
-                writeCharacteristic(characteristic, data); //kas 2 sekundes siunciam RSSI i prietaisa
+                writeCharacteristic(characteristic, data);
             }
         }
 
@@ -308,10 +296,10 @@ public class BluetoothLeService extends Service{
 
                     Log.d(TAG, "readCHARCHAR " + String.format("%02X ", byteChar));
                 }
-                batteryData = stringBuilder.toString();
+                receivedBatteryLevel = stringBuilder.toString();
             }
             final Intent intent = new Intent(BluetoothLeService.ACTION_BATTERY_LEVEL_READ);
-            intent.putExtra(ControlActivity.EXTRA_BATTERY_LEVEL, batteryData);
+            intent.putExtra(ControlActivity.EXTRA_BATTERY_LEVEL, receivedBatteryLevel);
             sendBroadcast(intent);
         }
         //Charakteristikos pakeitimas
@@ -329,29 +317,29 @@ public class BluetoothLeService extends Service{
             public void onReceive(Context context, Intent intent) {
                 final String action = intent.getAction();
                 if(ControlActivity.ACTION_ENABLE_ADVSP_SOUND.equals(action)){
-                    if(stateRSSI == STATE_BUZZER_OFF) {
+                    if(buzzerState == STATE_BUZZER_OFF) {
                         Log.d(TAG, "ACTION_ENABLE");
                         String data = "enable_sound";
                         writeCharacteristic(characteristic, data);
-                        stateRSSI = STATE_BUZZER_ON;
+                        buzzerState = STATE_BUZZER_ON;
                     }
-                    else if(stateRSSI == STATE_BUZZER_ON){
+                    else if(buzzerState == STATE_BUZZER_ON){
                         String data = "disable_sound";
                         writeCharacteristic(characteristic, data);
-                        stateRSSI = STATE_BUZZER_OFF;
+                        buzzerState = STATE_BUZZER_OFF;
                     }
                 }
                 if(ControlActivity.ACTION_ENABLE_SILENT.equals(action)){
-                    silentCheck = 1; //miego režimas įjungtas
+                    silentModeCheck = 1; //miego režimas įjungtas
                     Log.d(TAG, "SILENT_ENABLED");
                 }
                 if(ControlActivity.ACTION_DISABLE_SILENT.equals(action)){
-                    silentCheck = 0; //miego režimas išjungtas
+                    silentModeCheck = 0; //miego režimas išjungtas
                     Log.d(TAG, "SILENT_DISABLED");
                 }
                 if(ControlActivity.ACTION_RANGE_SET_CHANGE.equals(action)){
                     String intentValueHolder = intent.getStringExtra(ACTION_RANGE_SET);
-                    globalTryCount = Integer.parseInt(intentValueHolder);
+                    distanceRangeCheck = Integer.parseInt(intentValueHolder);
                     Log.d(TAG, "RANGE_SET_CHANGE " + intentValueHolder);
                 }
             }
@@ -380,8 +368,6 @@ public class BluetoothLeService extends Service{
         String extra_rssi = Integer.toString(rssi);
         intent.putExtra(ControlActivity.EXTRAS_DEVICE_RSSI, extra_rssi);
         intent.setAction(BluetoothLeService.ACTION_RSSI_VALUE_READ);
-        Log.d(TAG, "rssi_action = " + action);
-        Log.d(TAG, "RSSI = " + rssi);
         sendBroadcast(intent);
     }
     //Priklausomai ar yra RSSI reikšmė ar ne, kviečiamas skirtingas metodas.

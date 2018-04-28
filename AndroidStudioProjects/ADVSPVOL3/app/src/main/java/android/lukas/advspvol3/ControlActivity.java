@@ -65,7 +65,7 @@ public class ControlActivity extends Activity {
     private Button mFindDevice;
     private Button mBatteryLevel;
     private Button mAutoCalibration;
-    public int btn_state = STATE_BUZZER_OFF;
+    public int buzzerButtonState = STATE_BUZZER_OFF;
     private static final int STATE_BUZZER_ON = 1;
     private static final int STATE_BUZZER_OFF = 0;
 
@@ -75,23 +75,27 @@ public class ControlActivity extends Activity {
     TextView textViewRSSI;
     TextView textViewDeviceAddr;
     TextView textViewRangeSet;
-    Switch silentTime;
+    Switch silentModeButton;
     SeekBar rangeSet;
-    int tryCount = 0; //Bandymų skaičiaus indikacija
+    int reconnectRetries = 0; //Bandymų skaičiaus indikacija
     int tryRSSICount = 0;
     int setRangeValue;
-    int cnt = 0;
+    int buttonPressedCounter = 0;
     int oneMeter, twoMeters, threeMeters;
-    int constSum;
+    int constDiff;
     double distanceByRSSI;
-    double defaultmagic = 61.15;
+    double defaultConstant = 61.15;
+    double temp_default;
+    double temp_custom;
+    double temp_magic;
     String batteryLevel = "";
-    String meanRSSI;
+    String meanRSSIValue;
 
     private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
             new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
 
-    private enum State {STARTING, ENABLING, SCANNING, CONNECTING, CONNECTED, DISCONNECTED, DISCONNECTING};
+    private enum State {STARTING, ENABLING, SCANNING, CONNECTING, CONNECTED, DISCONNECTED, DISCONNECTING}
+
     State state = State.STARTING;
 
 
@@ -132,17 +136,32 @@ public class ControlActivity extends Activity {
                 Log.d(TAG, "ACTION_GATT_DIS iskviestas");
                 updateConnectionState();
                 //Iš naujo prisijungimas, jeigu yra atsijungiam nuo serverio - prietaiso.
-                if(tryCount >= 4){
-                    tryCount++;
+                if(reconnectRetries >= 4){
+                    reconnectRetries++;
                     mBluetoothLeService.connect(mDeviceAddress); //reconnectas
-                    Log.d(TAG, "TRY_COUNT" + Integer.toString(tryCount));
+                    Log.d(TAG, "TRY_COUNT" + Integer.toString(reconnectRetries));
                 }
                 //Jungiamas prie to paties MAC adreso.
             //Gautos RSSI reikšmės atvaizdavimas žodžiais
             } else if (BluetoothLeService.ACTION_RSSI_VALUE_READ.equals(action)) {
                 mDeviceRSSI = intent.getStringExtra(EXTRAS_DEVICE_RSSI);
-                updateRSSIValue(mDeviceRSSI);
-                Log.d(TAG, "mDeviceRSSI = " + mDeviceRSSI);
+
+                //where the magic happens
+                calcDistance();
+                //temp_default = ((Math.pow(10, (-(Integer.valueOf(mDeviceRSSI)) - defaultConstant)/20))/2400)*1000;
+
+                
+
+
+                //temp_custom = ((Math.pow(10, (-(Integer.valueOf(mDeviceRSSI)) - temp_magic)/20))/2400)*1000;
+
+                //Log.d(TAG, "EXPERIMENT: RSSI: " + mDeviceRSSI + " dBm ");
+                //Log.d(TAG, "EXPERIMENT: default constant: " + defaultConstant);
+                //Log.d(TAG, "EXPERIMENT: default formula: " + temp_default + " m");
+                //Log.d(TAG, "EXPERIMENT: calibrated constant: " + temp_magic);
+                //Log.d(TAG, "EXPERIMENT: calibrated formula: " + temp_custom + " m");
+
+
             }
             else if (BluetoothLeService.ACTION_PHONE_ALERT.equals(action)){
                 Toast.makeText(ControlActivity.this, "ADVSP dingo", Toast.LENGTH_LONG).show();
@@ -153,39 +172,39 @@ public class ControlActivity extends Activity {
                 batteryLevel = intent.getStringExtra(ControlActivity.EXTRA_BATTERY_LEVEL);
             }
             else if(DialogActivity.ACTION_SEND_MEAN_RSSI.equals(action)){
-                cnt++;
-                meanRSSI = intent.getStringExtra(ControlActivity.EXTRAS_MEAN_RSSI);
-                Log.d(TAG, "GOT_meanRSSI" + meanRSSI);
+                buttonPressedCounter++;
+                meanRSSIValue = intent.getStringExtra(ControlActivity.EXTRAS_MEAN_RSSI);
+                Log.d(TAG, "GOT_meanRSSIValue" + meanRSSIValue);
 
-                if(Integer.valueOf(meanRSSI) == 0){
-                    defaultmagic = 61.15;
-                    Log.d(TAG, "defaultmagic: GOT IT");
-                    cnt = 0;
+                if(Integer.valueOf(meanRSSIValue) == 0){
+                    defaultConstant = 61.15;
+                    Log.d(TAG, "defaultConstant: GOT IT");
+                    buttonPressedCounter = 0;
                 }
-                if(cnt == 1){
-                    oneMeter = Integer.valueOf(meanRSSI);
+                if(buttonPressedCounter == 1){
+                    oneMeter = Integer.valueOf(meanRSSIValue);
                 }
-                else if(cnt == 2){
-                    twoMeters = Integer.valueOf(meanRSSI);
+                else if(buttonPressedCounter == 2){
+                    twoMeters = Integer.valueOf(meanRSSIValue);
                 }
-                else if(cnt == 3){
-                    threeMeters = Integer.valueOf(meanRSSI);
-                    createNewDefault();
-                    cnt = 0;
+                else if(buttonPressedCounter == 3){
+                    threeMeters = Integer.valueOf(meanRSSIValue);
+                    createNewConstant();
+                    buttonPressedCounter = 0;
                 }
-                Log.d(TAG, "Gauta_mean_rssi " + meanRSSI);
+                Log.d(TAG, "Gauta_mean_rssi " + meanRSSIValue);
             }
         }
     };
 
-    private void createNewDefault() {
-        constSum = (-40-(oneMeter)) + (-46-(twoMeters)) + (-49-(threeMeters));
-        constSum = constSum/3;
-        Log.d(TAG, "calibrationvalue: " + constSum);
-        defaultmagic = 32.45 + constSum;
+    private void createNewConstant() {
+        constDiff = (-40-(oneMeter)) + (-46-(twoMeters)) + (-49-(threeMeters));
+        constDiff = constDiff/3;
+        Log.d(TAG, "calibrationvalue: " + constDiff);
+
+        //temp_magic = 32.45 + constDiff;
+        defaultConstant = 32.45 + constDiff;
     }
-
-
     //Atgalinio mygtuko paspaudimas, kuris sukuria Alert pranešimą su pasirinkimo variantais.
     public void onBackPressed(){
         new android.app.AlertDialog.Builder(ControlActivity.this)
@@ -195,10 +214,6 @@ public class ControlActivity extends Activity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         finish();
-                        //čia dar reikės pagalvoti, kad programa nelūžtų
-                        //Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                        //intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK|Intent.FLAG_ACTIVITY_NEW_TASK);
-                        //startActivity(intent);
                     }
                 })
                 .setNeutralButton("Grįžti", new DialogInterface.OnClickListener() {
@@ -210,24 +225,23 @@ public class ControlActivity extends Activity {
 
     }
     //RSSI signalo atvaizdavimas
-    //Čia dar reikės su atstumu kažkaip pažaisti??
-    private void updateRSSIValue(String get_rssi){
-        double rssi_int = Integer.parseInt(get_rssi);
-        if(rssi_int > -30) {
-            Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Prietaisas yra labai labai arti..");
-        } else if (-30 > rssi_int && rssi_int > -67){
-            Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Prietaisas yra šalia..");
-        } else if (-67 > rssi_int && rssi_int > -70){
-            Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Prietaisas už vidutinio atstumo..");
-        } else if (-70 > rssi_int && rssi_int > -80){
-            Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Prietaisas tolsta..");
-        } else if (-80 > rssi_int){
-            Log.d(TAG, "Signalo stiprumas: " + get_rssi);
-            textViewRSSI.setText("Prietaisas nutolęs");
+    private void updateNotificationValue(int distance){
+
+        if(distance < 2) {
+            Log.d(TAG, "updateNotificationValue - atstumas " + distance +" m");
+            textViewRSSI.setText("Prietaisas yra už " + Integer.toString(distance) + " +- 2 m.");
+        } else if (2 <= distance && distance < 4){
+            Log.d(TAG, "updateNotificationValue - atstumas " + distance +" m");
+            textViewRSSI.setText("Prietaisas yra už" + Integer.toString(distance) + " +- 2 m.");
+        } else if (4 <= distance && distance < 6){
+            Log.d(TAG, "updateNotificationValue - atstumas " + distance +" m");
+            textViewRSSI.setText("Prietaisas yra už" + Integer.toString(distance) + " +- 2 m.");
+        } else if (6 <= distance && distance < 8){
+            Log.d(TAG, "updateNotificationValue - atstumas " + distance +" m");
+            textViewRSSI.setText("Prietaisas yra už" + Integer.toString(distance) + " +- 2 m.");
+        } else if (8 <= distance){
+            Log.d(TAG, "updateNotificationValue - atstumas " + distance +" m");
+            textViewRSSI.setText("Prietaisas yra už" + Integer.toString(distance) + " +- 2 m.");
         }
     }
     //Pagrindinis metodas sukuriamas, kai paleidžiama ControlActivity
@@ -240,22 +254,22 @@ public class ControlActivity extends Activity {
         mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
         mDeviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
         mDeviceRSSI = intent.getStringExtra(EXTRAS_RSSI);
-        mFindDevice = (Button) findViewById(R.id.findDevice);
-        mBatteryLevel = (Button)findViewById(R.id.batteryLevelButton);
-        mAutoCalibration = (Button)findViewById(R.id.autoCalibration);
-        textViewDeviceAddr = (TextView)findViewById(R.id.textDeviceAddress);
-        textViewRSSI = (TextView)findViewById(R.id.device_rssi);
-        textViewState = (TextView)findViewById(R.id.textState);
-        textViewName = (TextView)findViewById(R.id.textDeviceName);
-        textViewRangeSet = (TextView)findViewById(R.id.rangeSetView);
+        mFindDevice = findViewById(R.id.findDevice);
+        mBatteryLevel = findViewById(R.id.batteryLevelButton);
+        mAutoCalibration = findViewById(R.id.autoCalibration);
+        textViewDeviceAddr = findViewById(R.id.textDeviceAddress);
+        textViewRSSI = findViewById(R.id.device_rssi);
+        textViewState = findViewById(R.id.textState);
+        textViewName = findViewById(R.id.textDeviceName);
+        textViewRangeSet = findViewById(R.id.rangeSetView);
         textViewRangeSet.setText("Nuotolio nustatymas: Arti - Toli");
         textViewName.setText("Vardas: " + mDeviceName); //cia kad rastu sita dalyka
         textViewDeviceAddr.setText("MAC: " + mDeviceAddress);
         textViewRSSI.setText(mDeviceRSSI);
-        silentTime = (Switch) findViewById(R.id.silent_time);
-        rangeSet = (SeekBar) findViewById(R.id.rangeSet);
+        silentModeButton = findViewById(R.id.silent_time);
+        rangeSet = findViewById(R.id.rangeSet);
         //Atstumo nustatymo vienas iš įgyvendinimo būdų
-        silentTime.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        silentModeButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
                 if(isChecked) {
@@ -275,23 +289,13 @@ public class ControlActivity extends Activity {
             public void onProgressChanged(SeekBar seekBar, int i, boolean isChanged) {
                 if(isChanged){
                     setRangeValue = seekBar.getProgress();
-                    if(setRangeValue > 50){
-
-                        //cia atstumas nuo rssi lygtis turi buti
-
-                        calcDistance();
-                        tryRSSICount = 1; //Jeigu prietaisas yra toli - RSSI šuoliai bus mažesni
-                        //darom prielaidą, jog mažiau kliūčių kažkokių gali atsirasti
-                    }
-                    else{
-                        tryRSSICount = 3; //Jeigu prietaisas yra arti - RSSI šuolių tikimybė yra didesnė dėl kliūčių kiekio
-                    }
+                    //tas progresas nuo 0 - 100, tai reiki ji padalint
+                    setRangeValue = setRangeValue/10; //gaunam metrus
                 }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-
             }
 
             @Override
@@ -299,8 +303,8 @@ public class ControlActivity extends Activity {
                 Toast.makeText(ControlActivity.this, "Pakitimai išsaugoti", Toast.LENGTH_LONG).show();
                 final Intent intent = new Intent(ControlActivity.ACTION_RANGE_SET_CHANGE);
                 intent.setAction(ControlActivity.ACTION_RANGE_SET_CHANGE);
-                String tryCountString = Integer.toString(tryRSSICount);
-                intent.putExtra(BluetoothLeService.ACTION_RANGE_SET, tryCountString);
+                String reconnectRetriesString = Integer.toString(setRangeValue);
+                intent.putExtra(BluetoothLeService.ACTION_RANGE_SET, setRangeValue);
                 sendBroadcast(intent);
             }
         });
@@ -317,19 +321,19 @@ public class ControlActivity extends Activity {
         mFindDevice.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(btn_state == STATE_BUZZER_OFF) {
+                if(buzzerButtonState == STATE_BUZZER_OFF) {
                     Toast.makeText(getBaseContext(), "Įjungiam ADVSP signalą", Toast.LENGTH_SHORT).show();
                     final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_ADVSP_SOUND);
                     intent.setAction(ControlActivity.ACTION_ENABLE_ADVSP_SOUND);
                     sendBroadcast(intent);
-                    btn_state = STATE_BUZZER_ON;
+                    buzzerButtonState = STATE_BUZZER_ON;
                 }
-                else if(btn_state == STATE_BUZZER_ON){
+                else if(buzzerButtonState == STATE_BUZZER_ON){
                     Toast.makeText(getBaseContext(), "Išjungiam ADVSP signalą", Toast.LENGTH_SHORT).show();
                     final Intent intent = new Intent(ControlActivity.ACTION_ENABLE_ADVSP_SOUND);
                     intent.setAction(ControlActivity.ACTION_ENABLE_ADVSP_SOUND);
                     sendBroadcast(intent);
-                    btn_state = STATE_BUZZER_OFF;
+                    buzzerButtonState = STATE_BUZZER_OFF;
                 }
             }
         });
@@ -348,12 +352,9 @@ public class ControlActivity extends Activity {
     }
     //rankinis kalibravimas
     private void calcDistance() {
-        distanceByRSSI = ((Math.pow(10, (Integer.valueOf(meanRSSI) - defaultmagic)/20))/2400)*1000; //pagal rssi atstumas i m
+        distanceByRSSI = ((Math.pow(10, (Integer.valueOf(meanRSSIValue) - defaultConstant)/20))/2400)*1000; //pagal rssi atstumas i m
+        updateNotificationValue((int)distanceByRSSI);
     }
-        //pirma reikia sudaryti standartine formule prie kokiu atstumu yra kokie rssi
-        //gauti antra varianta pagal rankine kalibravima
-        //gauti skirtuma - prideti prie teorinio modelio
-        //reset - viska atstato i pradine busena
 
     @Override
     protected void onResume() {
