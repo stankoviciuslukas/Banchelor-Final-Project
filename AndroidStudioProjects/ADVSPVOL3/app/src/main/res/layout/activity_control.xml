@@ -109,6 +109,14 @@
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent" />
 
+        <TextView
+            android:id="@+id/lostCounterText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/lostCounter"
+            tools:layout_editor_absoluteX="4dp"
+            tools:layout_editor_absoluteY="0dp" />
+
     </android.support.constraint.ConstraintLayout>
 
 

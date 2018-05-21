@@ -1,6 +1,4 @@
 package android.lukas.advspvol3;
-
-
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
@@ -22,20 +20,22 @@ import java.util.Timer;
 import java.util.TimerTask;
 public class DialogActivity extends Activity{
     private final static String TAG = DialogActivity.class.getSimpleName();
-
+    //Klasės veiksmų iniciavimas
     public static final String DEVICE_RSSI = "DEVICE_RSSI";
     public static final String ACTION_SEND_MEAN_RSSI =
             "android.lukas.advspvol3.ACTION_SEND_MEAN_RSSI";
-    int receivedRSSI;
-    Button oneMeter, twoMeter, threeMeter, resetBtn;
-    private ProgressBar firstProgressBar, secondProgressBar, thirdProgressBar;
-    CountDownTimer waitTimer;
     private static final int BUTTON_OFF = 0;
     private static final int BUTTON_ON = 1;
     public int oneMeterButtonState = BUTTON_OFF;
     public int twoMeterButtonState = BUTTON_OFF;
     public int threeMeterButtonState = BUTTON_OFF;
     public int resetButtonState = BUTTON_OFF;
+    int receivedRSSI;
+    //Mygtukų iniciavimas
+    Button oneMeter, twoMeter, threeMeter, resetBtn;
+    private ProgressBar firstProgressBar, secondProgressBar, thirdProgressBar;
+    CountDownTimer waitTimer;
+    //DialogActivy klasės sukūrimas su mygtukai ir progreso apskritimais proceso vizualizacijai
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -50,6 +50,7 @@ public class DialogActivity extends Activity{
         firstProgressBar.setVisibility(View.INVISIBLE);
         secondProgressBar.setVisibility(View.INVISIBLE);
         thirdProgressBar.setVisibility(View.INVISIBLE);
+        //Mygtukų būsenos stebėjimas, jeigu nuspaustas - siunčiama rssi reikšmė
         oneMeter.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -57,7 +58,6 @@ public class DialogActivity extends Activity{
                 oneMeter.setVisibility(View.INVISIBLE);
                 firstProgressBar.setVisibility(View.VISIBLE);
                 countRSSIvalues();
-                //checkState();
             }
         });
         twoMeter.setOnClickListener(new View.OnClickListener() {
@@ -78,6 +78,7 @@ public class DialogActivity extends Activity{
                 countRSSIvalues();
             }
         });
+        //Iš naujo nustatyto mygtukas, kuris sugrąžina pradinę atstumo konstantą
         resetBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -100,6 +101,7 @@ public class DialogActivity extends Activity{
             }
         });
     }
+    //Nuskaitoma rssi vertė, kas 10 sekundžių. Toks laikas pasirinktas dėl signalo lygio stabilizavimo
     private void countRSSIvalues() {
         waitTimer = new CountDownTimer(10000,1000) {
             @Override
@@ -114,6 +116,8 @@ public class DialogActivity extends Activity{
             }
         }.start();
     }
+    //Mygtukų būsenos tikrinimas, jeigu buvo nors vienas nuspaustas nusiunčiama signalo vertė ir nebeleidžiama daugiau skenuoti to paties taško
+    //Nebent yra paspaudžiamas iš naujo nustatymo mygtukas
     private void checkState() {
 
         if (oneMeterButtonState == BUTTON_ON) {
@@ -147,16 +151,15 @@ public class DialogActivity extends Activity{
             Log.d(TAG, "sendRSSI" + defaultConst);
         }
     }
-
+    //Vidurkinta signalo lygio reikšmė grąžinama į ControlActivity klasę
     private void sendMeanValue(int rssi) {
         final Intent intent = new Intent(ACTION_SEND_MEAN_RSSI);
         String hold = Integer.toString(rssi);
         intent.putExtra(ControlActivity.EXTRAS_MEAN_RSSI, hold);
         intent.setAction(DialogActivity.ACTION_SEND_MEAN_RSSI);
-        Log.d(TAG,"sendMeanValue_called" + hold);
         sendBroadcast(intent);
     }
-
+    //Iš BluetoothLeService suvidurkintos reikšmės gavimas
     private final BroadcastReceiver mGattUpdateReceiverDialog = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -172,11 +175,13 @@ public class DialogActivity extends Activity{
         //Įjungiamas veiksmų gaviklis, pagal jį atnaujinami tekstiniai (būsenos laukai)
         registerReceiver(mGattUpdateReceiverDialog, makeGattUpdateIntentFilterDialog());
     }
+    //Jeigu klasė sustabdoma išjungiamas kitų klasių veiksmų aptikimas
     @Override
     protected void onPause() {
         super.onPause();
         unregisterReceiver(mGattUpdateReceiverDialog);
     }
+    //Veiksmų filtro iniciavimas
     private static IntentFilter makeGattUpdateIntentFilterDialog() {
         final IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(BluetoothLeService.ACTION_RSSI_VALUE_READ);

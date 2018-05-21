@@ -20,6 +20,7 @@
     <string name="location_outside">Saugoma vieta - laukas</string>
     <string name="silent_hours">Begarsis režimas</string>
     <string name="findDevice">Rasti\nADVSP</string>
+    <string name="lostCounter">Iš viso ADVSP dingo kartų: 0</string>
     <string name="rangeSetText">Atstumo nustatymas - nuo 1 iki 10 metrų</string>
     <string name="bateryLevel">Baterijos\nlygis</string>
     <string name="calibration">Vartotojo\nKalibracija</string>

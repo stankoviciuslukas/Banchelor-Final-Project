@@ -40,55 +40,51 @@ import java.util.List;
 public class MainActivity extends Activity {
 
     private static final String TAG = "MyActivity";
-    private BluetoothAdapter mBluetoothAdapter; //Pagrindinė Bluetooth klasė
-    private BluetoothLeScanner mBluetoothLeScanner; //BLE prietaisų skaneris
-
-    private boolean mScanning; //Skenavimo atvaizdavimui
-
+    private BluetoothAdapter mBluetoothAdapter; //Pagrindinė Bluetooth klasės objektas
+    private BluetoothLeScanner mBluetoothLeScanner; //BLE prietaisų skeneris
+    private boolean mScanning; //Skenavimo proceso indikacija
     private static final int RQS_ENABLE_BLUETOOTH = 1; // Prašymas įjungti bluetooth adapterį
-
-    Button btnScan; //IEŠKOTI mygtuko iniciavimas
-    ListView listViewLE; //Listas
-
-    List<BluetoothDevice> listBluetoothDevice; //Bluetooth listas/yra skirtumas tarp listo ir bluetooth isto
+    Button btnScan; //Skenavimo mygtuko iniciavimas
+    ListView listViewLE; //Sąrašas, kuriame atvaizduojamas surasti prietaisai
+    List<BluetoothDevice> listBluetoothDevice; //Bluetooth listas
     ListAdapter adapterLeScanResult; //Skanavimo rezultatų talpinimas
-    TextView mDeviceName;
-    TextView mDeviceRSSI;
-    private String deviceUserSetName = "";
+    TextView mDeviceName; //Bluetooth prietaiso vardo lauko iniciavimas
+    TextView mDeviceRSSI; //Bluetooth prietaiso signalo lygio lauko iniciavimas
+    private String deviceUserSetName = ""; //Laukas skirtas prietaiso vardui nustatyti
     String mac = "00:1E:C0:59:AE:95"; //ADVSP MAC adresas
     int foundADVSP = 0;
 
     private Handler mHandler; //Pranešimų rašymui
-    private static final long SCAN_PERIOD = 5000; // skanavimo periodas 10 sekundžių
+    private static final long SCAN_PERIOD = 5000; // skanavimo periodas 5 sekundžių
 
-    //Kai tik paleidžiama program visų elementų atvaizdavimas
+    //Klasės elementų atvaizdavimas
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main); //Nustatoma xml failas (klasės išvaizda)
         findViewById(R.id.loadingPanel).setVisibility(View.INVISIBLE); //paslepiam loadinimo bara
-        mDeviceRSSI = findViewById(R.id.get_rssi);
+        mDeviceRSSI = findViewById(R.id.get_rssi); //Kintamųjų priskirimas atitinkamiems ID
         mDeviceName = findViewById(R.id.ble_name);
         Typeface typeface = Typeface.createFromAsset(getAssets(), "fonts/nevis.ttf");
         mDeviceName.setTypeface(typeface);
         mDeviceName.setText("ADVSP");
         mDeviceName.setVisibility(View.VISIBLE);
         mDeviceRSSI.setVisibility(View.INVISIBLE);
-        //BLE funkcijos patikrinimas ant mobilaus telefono
+        //Bluetooth Low Power funkcijos patikrinimas ant mobilaus telefono
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             //Pranešimas, jog prietaisas nepalaiko BLE
-            Toast.makeText(this, "BLE nepalaikomas", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Bluetooth Low Power nepalaikomas", Toast.LENGTH_SHORT).show();
             finish(); //Programo išėjimas
         }
-        getBluetoothAdapterAndLeScanner();         //Gaunam prietaiso defaultini adapterį ir skanerį
+        getBluetoothAdapterAndLeScanner();         //Gaunam prietaiso pagrindinį Bluetooth modulį ir skenerį
         //Patikrinam ar yra adapteris
         if (mBluetoothAdapter == null) {
             Toast.makeText(this, "Nerastas bluetooth adapteris", Toast.LENGTH_SHORT).show();
             finish(); //Programos išėjimas
             return;
         }
-
         btnScan = findViewById(R.id.btn_scan); //ID priskirimas prie IEŠKOTI mygtukas
+        //Mygtuko paspaudimo klausimasis. Jeigu paspaustas - pradedamas skenavimas
         btnScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -99,34 +95,14 @@ public class MainActivity extends Activity {
                 findViewById(R.id.loadingPanel).setVisibility(View.VISIBLE); //Skenavimo progress bar
             }
         });
-        //Telefono defaultinio ringtono paleidimas -> tikriausiai keliaus į control activity klasę
-        /*
-        //muzikele kai mygtukas paspaustas cia siaip - sito reikes telefono suradimo funkcijai
-        Button one = (Button) this.findViewById(R.id.mediabutton);
-        final MediaPlayer mp = MediaPlayer.create(this, Settings.System.DEFAULT_RINGTONE_URI);
-        one.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                    if(mp.isPlaying()){
-                        mp.pause();
-                    }
-                    else {
-                        mp.start();
-                    }
-            }
-        });
-        */
-
-        listViewLE = findViewById(R.id.lelist); //List ID priskirimas
-        //Sąrašų iniciavimas
+        listViewLE = findViewById(R.id.lelist);
+        //Bluetooth prietaisų sąrašo iniciavimas
         listBluetoothDevice = new ArrayList<>();
         adapterLeScanResult = new ArrayAdapter<BluetoothDevice>(this, android.R.layout.simple_expandable_list_item_1,
                 listBluetoothDevice);
         listViewLE.setAdapter(adapterLeScanResult);
-        // listViewLE.setOnItemClickListener(scanResultOnItemClickListener);
-        mHandler = new Handler(); //Pranešimų atvaizdavimui
+        mHandler = new Handler();
     }
-    //-------------------------------------------------------------------------------------------------
     //Nustatomas prietaiso tipas
     private String getBTDeviceType(BluetoothDevice d){
         String type = "";
@@ -148,59 +124,58 @@ public class MainActivity extends Activity {
         }
         return type;
     }
-    //-----------------------------------------------------------------------------------------------
-    //Defaultinių metodu perrašymas, siekiant išvengti klaidų
+    //Po klasės iniciavimo tikrinimas ar Bluetooth modulis yra įjungtas mobiliajame telefone
     @Override
     protected void onResume(){
         super.onResume();
-        //Jeigu adapteris nėra įjungtas
         if(!mBluetoothAdapter.isEnabled()){
             Intent enableBtIntent = new Intent (BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, RQS_ENABLE_BLUETOOTH);
         }
     }
-    //----------------------------------------------------------------------------------------------
-    //Būsenų gaviklis - galbūt ir nereikia jo
+    //Ketinimų priėmimo metodas
     private final BroadcastReceiver receiver = new BroadcastReceiver(){
         @Override
         public void onReceive(Context context, Intent intent) {
             final Intent intent_to_control = new Intent(MainActivity.this,
                     ControlActivity.class);
             String action = intent.getAction();
+            //Jeigu randamas Bluetooth prietaisas, nusiunčiama pradinė signalo lygio reikšmė į ControlActivity klasę.
             if(BluetoothDevice.ACTION_FOUND.equals(action)) {
                 int  rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI,Short.MIN_VALUE);
-                Log.d(TAG,"  Prie intent: " + rssi + "dBm");
                 String RSSI = Integer.toString(rssi);
                 intent_to_control.putExtra(ControlActivity.EXTRAS_RSSI,RSSI);
             }
             sendBroadcast(intent_to_control);
         }
     };
-    //--------------------------------------------------------------------------------------------------
+    //Metodas skirtas gauti pagrindinį Bluetooth modulį
     private void getBluetoothAdapterAndLeScanner(){
         final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = bluetoothManager.getAdapter();
         mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
         mScanning = false;
     }
-//-----------------------------------------------------------------------------------------------------------------------
+    //Bluetooth prietaisų skenavimo funkcija
     private void scanLeDevice(final boolean enable) {
         if (enable) {
-            listBluetoothDevice.clear(); //Listo ištrinimas
-            listViewLE.invalidateViews(); //Listo atnaujinimas
-            // Stabdomas skenavimas po SCAN_PERIOD
+            listBluetoothDevice.clear(); //Sąrašo ištrinimas
+            listViewLE.invalidateViews(); //Sąrašo atnaujinimas
+            // Stabdomas skenavimas po SCAN_PERIOD, kuris yra 5 sekundės
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     mBluetoothLeScanner.stopScan(scanCallback);
-                    findViewById(R.id.loadingPanel).setVisibility(View.GONE); //Progress baro paslėpimas
-                    listViewLE.invalidateViews(); //Listo atnaujinimas
+                    findViewById(R.id.loadingPanel).setVisibility(View.GONE); //Progreso apskritimo paslėpimas
+                    listViewLE.invalidateViews(); //Sąrašo atnaujinimas
 
                     Toast.makeText(MainActivity.this,
                             "Skanavimas baigtas",
                             Toast.LENGTH_LONG).show();
 
-                    btnScan.setVisibility(View.VISIBLE); //matomas
+                    btnScan.setVisibility(View.VISIBLE); //Skenavimo mygtukas tampa vėl matomas
+                    //Jeigu randamas ADVSP leidžiama į jį prisijungtis. Už prisijungimą atsakinga ControlActivity ir BluetoothLeService klasės
+                    //Jeigu nerandamas ADVSP - leidžiama iš naujo skenuoti
                     if(foundADVSP == 1) {
                         btnScan.setText("PRISIJUNGTI");
                         btnScan.setOnClickListener(new View.OnClickListener() {
@@ -211,7 +186,7 @@ public class MainActivity extends Activity {
                                 final EditText input = new EditText(MainActivity.this);
                                 input.setInputType(InputType.TYPE_CLASS_TEXT);
                                 builder.setView(input);
-                                //builder.setMessage(msg)
+                                //Išokančio lango parametrų valdymas
                                 builder.setPositiveButton("PRISIJUNGTI", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
@@ -227,6 +202,7 @@ public class MainActivity extends Activity {
                                             mScanning = false;
                                             btnScan.setEnabled(true);
                                         }
+                                        //Iškviečiama ControlActivity klasė su rastais prietaiso parametrais: vardu ir mac adresu
                                         startActivity(intent);
                                     }
                                 })
@@ -254,27 +230,26 @@ public class MainActivity extends Activity {
             btnScan.setEnabled(true); //leidziama skenuoti
         }
     }
-    //-------------------------------------------------------------------------------------------------------------
-    //Po kiekvieno skenavimo kviečiamas metodas
+    //Po kiekvieno skenavimo kviečiamas atgalinis metodas
     private ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             super.onScanResult(callbackType, result);
-            final int rssi = result.getRssi(); // Gaunam pradinę RSSI vertę
+            final int rssi = result.getRssi(); // Gaunam pradinę RSSI prietaiso reikšmę
             addBluetoothDevice(result.getDevice(), rssi);
             IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
             registerReceiver(receiver, discoverDevicesIntent);
         }
-
-//------------------------------------------------------------------------------------------------------
+        //Jeigu įvykdo klaida skenuojant - parodomas klaidos pranešimas
         @Override
-        public void onScanFailed(int errorCode) { //Klaidų aptikimui
+        public void onScanFailed(int errorCode) {
             super.onScanFailed(errorCode);
             Toast.makeText(MainActivity.this,
                     "onScanFailed: " + String.valueOf(errorCode),
                     Toast.LENGTH_LONG).show();
         }
-        private void addBluetoothDevice(BluetoothDevice device, int new_rssi){ //Prietaisų pridėjimas į sąrašą
+        //Bluetooth prietaiso pridėjimas į sąrašą
+        private void addBluetoothDevice(BluetoothDevice device, int new_rssi){
 
             if(!listBluetoothDevice.contains(device)) {
                 Log.d(TAG, "SONY____" + device.getAddress());
@@ -284,30 +259,22 @@ public class MainActivity extends Activity {
                     mBluetoothLeScanner.stopScan(scanCallback);
                     mScanning = false;
                     findViewById(R.id.loadingPanel).setVisibility(View.INVISIBLE);
-                    //Klaidų tikrinimui
-                    Log.d(TAG, "Device Name:" + device.getName());
-                    Log.d(TAG, "device MAC" + device.getAddress());
-                    Log.d(TAG, "Add bluetoothDevice funkcija:" + new_rssi);
                     listBluetoothDevice.add(device); //Prietaiso pridėjimas į sąrašą
-                    //mDeviceName.setText("Rastas " + device.getName());
                     String found_rssi = Integer.toString(new_rssi);
                     mDeviceRSSI.setText("Prietaiso signalo lygis: " + found_rssi + " dBm");
                     mDeviceName.setVisibility(View.VISIBLE);
                     mDeviceRSSI.setVisibility(View.VISIBLE);
                     listViewLE.invalidateViews(); //Sąrašo atnaujinimas
-                    //
                 }
             }
         }
     };
-    //---------------------------------------------------------------------------------------------------------------------------
-    //API 18+ versijos apėjimas dėl privilegijų skyrimo
+    //API 18+ versijos apėjimas dėl privilegijų skyrimo. Kitaip negalės skenuoti Bluetooth Low Power modulių
     private void checkBTPermissions() {
         if(Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP){
             int permissionCheck = this.checkSelfPermission("Manifest.permission.ACCESS_FINE_LOCATION");
             permissionCheck += this.checkSelfPermission("Manifest.permission.ACCESS_COARSE_LOCATION");
             if (permissionCheck != 0) {
-
                 this.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001); //Any number
             }
         }
